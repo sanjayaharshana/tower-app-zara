@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <g fill="none" stroke="#7a3e1a" stroke-opacity=".12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <!-- steaming cup -->
+    <g transform="translate(16 22)">
+      <path d="M6 22h38v8a19 19 0 0 1-38 0z"/>
+      <path d="M44 26h4a7 7 0 0 1 0 14h-5"/>
+      <path d="M0 56h52"/>
+      <path d="M16 15c-4-5 4-8 0-13M26 15c-4-5 4-8 0-13M36 15c-4-5 4-8 0-13"/>
+    </g>
+    <!-- coffee bean -->
+    <g transform="translate(152 46) rotate(30)"><ellipse rx="11" ry="15"/><path d="M0-13c-6 8 6 18 0 26"/></g>
+    <!-- tea leaf -->
+    <g transform="translate(28 150) rotate(-30)"><path d="M0 0c10-17 34-17 44 0-10 17-34 17-44 0z"/><path d="M0 0h44"/></g>
+    <!-- chocolate piece -->
+    <g transform="translate(124 120) rotate(12)"><rect width="42" height="30" rx="4"/><path d="M14 0v30M28 0v30M0 15h42"/></g>
+    <!-- heart -->
+    <path d="M100 92c-4-6-14-3-10 5l10 9 10-9c4-8-6-11-10-5z"/>
+  </g>
+  <g fill="#7a3e1a" fill-opacity=".12">
+    <circle cx="96" cy="30" r="3"/><circle cx="182" cy="176" r="3"/><circle cx="76" cy="186" r="2.5"/><circle cx="182" cy="96" r="2.5"/>
+  </g>
+</svg>
