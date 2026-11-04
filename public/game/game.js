@@ -316,8 +316,9 @@
   const showcase = { slots: [], next: 0 };
 
   function buildCollage() {
-    // [pack, left %, top %, rotation]: three in the back row, two in front; one of each flavour
-    const layout = [[1, 0, 3, -9], [2, 33, 0, 2], [0, 66, 4, 9], [3, 16, 41, -5], [6, 50, 43, 6]];
+    // [pack, left %, top %, rotation]: three in the back row, two in front; a sachet of each flavour, and
+    // rotateShowcase flips them one at a time to the pouch and back
+    const layout = [[1, 0, 3, -9], [2, 33, 0, 2], [0, 66, 4, 9], [3, 16, 41, -5], [5, 50, 43, 6]];
     showcase.slots = [];
     el.collage.textContent = '';
     layout.forEach(([fi, l, t, r], i) => {
