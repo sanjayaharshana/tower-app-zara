@@ -49,4 +49,12 @@ class PackAssetsTest extends TestCase
         $this->assertEqualsCanonicalizing(array_keys($this->gamePacks()), $footer);
         $this->get('/leaderboard')->assertOk()->assertSee('game/assets/packs/bombay-chai-pouch.webp', false);
     }
+
+    public function test_the_background_stall_picture_exists(): void
+    {
+        $this->assertMatchesRegularExpression("/const STALL = \\{ src: SERVER\\.assetBase \\+ '([^']+)'/", file_get_contents(public_path('game/game.js')));
+        preg_match("/const STALL = \\{ src: SERVER\\.assetBase \\+ '([^']+)'/", file_get_contents(public_path('game/game.js')), $m);
+
+        $this->assertFileExists(public_path('game/'.$m[1]));
+    }
 }

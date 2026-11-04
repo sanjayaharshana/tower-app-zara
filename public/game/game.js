@@ -1,4 +1,4 @@
-/* ZARA Tower Challenge — drop the moving packs and stack them as high as you can before time runs out. */
+/* ZARA Tower Challenge — drop the moving packs and stack them as high as you can until the lives run out. */
 (() => {
   'use strict';
 
@@ -36,9 +36,6 @@
   const sameFlavour = (a, b) => a >= 0 && b >= 0 && PACKS[a].flavour === PACKS[b].flavour;
   const BASE_PACK = 4; // the stand-up pouch sits on the table at the start
 
-  // Logo on the tea stall sign in the background garden.
-  const LOGO = { src: SERVER.assetBase + 'assets/logo-badge.png', img: null };
-
   // All game logic runs in virtual units: the screen is always VW units wide.
   const VW = 400;
   const PACK_W = 116, ART_PAD = 12;
@@ -49,11 +46,9 @@
   const GRAVITY = 3000;
   const BASE_SPEED = 230, MAX_SPEED = 560, SPEED_STEP = 0.06;
   const SCENE_H = 330;
-  // Zara tea stall on the lawn right of the tower: x, y = middle of its base in scene units, k = scale.
-  // paintStall draws it in its own units with (0, 0) at that base point and negative y going up.
-  const STALL = { x: 330, y: SCENE_H - 40, k: 0.8 };
-  const STALL_CUPS = [6, 22, 38]; // cup positions on the counter; steam rises from these and the urn
-  const STALL_URN = -30;
+  // Zara tea stall on the lawn right of the tower, a transparent cut-out picture:
+  // x, y = middle of its base in scene units, w = width in scene units.
+  const STALL = { src: SERVER.assetBase + 'assets/stall.webp', img: null, x: 330, y: SCENE_H - 38, w: 132 };
   const CONFETTI = ['#ffd23f', '#e4252b', '#ffffff', '#2c9a3c', '#1f57c8', '#7a3db0'];
 
   // Tower physics, switched on with a difficulty level 1–5 in Admin → Settings (names and descriptions
@@ -278,123 +273,14 @@
     paintStall(c);
   }
 
-  const STALL_RED = '#d42a25', STALL_YELLOW = '#f6c453', BRAND_RED = '#a52422';
-
   function paintStall(c) {
-    c.save();
-    c.translate(STALL.x, STALL.y);
-    c.scale(STALL.k, STALL.k);
-    const s = c.getTransform().a; // shadow sizes are in device pixels, so scale them by hand
-
     c.fillStyle = 'rgba(30,70,20,0.3)';
-    c.beginPath(); c.ellipse(0, 0, 68, 6, 0, 0, Math.PI * 2); c.fill();
-
-    // inside: back wall and a shelf showing off the packs
-    let g = c.createLinearGradient(0, -128, 0, -46);
-    g.addColorStop(0, '#3d1a08'); g.addColorStop(1, '#6b3416');
-    c.fillStyle = g; c.fillRect(-50, -128, 100, 82);
-    c.fillStyle = '#c48444'; c.fillRect(-48, -88, 96, 3);
-    c.fillStyle = '#8a4f22'; c.fillRect(-48, -85, 96, 1.5);
-    [1, 0, 5, 2, 3].forEach((f, i) => { // one sachet of each flavour
-      const img = PACKS[f].img;
-      if (!img) return;
-      const w = 14, h = (w * img.naturalHeight) / img.naturalWidth;
-      c.drawImage(img, -36 + i * 18 - w / 2, -88 - h, w, h);
-    });
-    g = c.createLinearGradient(0, -118, 0, -98);
-    g.addColorStop(0, 'rgba(20,6,0,0.55)'); g.addColorStop(1, 'rgba(20,6,0,0)');
-    c.fillStyle = g; c.fillRect(-50, -118, 100, 20);
-
-    for (const x of [-54, 50]) {
-      c.fillStyle = '#fff4e2'; c.fillRect(x, -112, 4, 66);
-      c.fillStyle = 'rgba(120,60,20,0.25)'; c.fillRect(x + 2.6, -112, 1.4, 66);
-    }
-
-    // counter: wooden top, red front with the tagline on a yellow band
-    g = c.createLinearGradient(0, -47, 0, -40);
-    g.addColorStop(0, '#e6ad6c'); g.addColorStop(1, '#c48444');
-    c.fillStyle = g; rr(c, -58, -47, 116, 7, 2); c.fill();
-    g = c.createLinearGradient(0, -40, 0, -4);
-    g.addColorStop(0, STALL_RED); g.addColorStop(1, '#a3171c');
-    c.fillStyle = g; c.fillRect(-54, -40, 108, 36);
-    c.fillStyle = 'rgba(0,0,0,0.12)';
-    for (let x = -36; x < 54; x += 18) { c.fillRect(x, -40, 1.2, 10); c.fillRect(x, -16, 1.2, 12); }
-    c.fillStyle = STALL_YELLOW; c.fillRect(-54, -30, 108, 14);
-    c.fillStyle = 'rgba(165,36,34,0.35)'; c.fillRect(-54, -30, 108, 1); c.fillRect(-54, -17, 108, 1);
-    c.fillStyle = BRAND_RED;
-    c.font = '10px "Lilita One", "Fredoka", sans-serif';
-    c.textAlign = 'center'; c.textBaseline = 'middle';
-    c.fillText('Cup for any vibe', 0, -22.5, 100);
-    c.fillStyle = '#6a3510'; c.fillRect(-56, -4, 112, 4);
-
-    paintUrn(c, STALL_URN, -46);
-    STALL_CUPS.forEach((x, i) => paintCup(c, x, -46, i === 1));
-
-    // striped awning with a scalloped edge and a string of lights
-    for (let i = 0; i < 8; i++) {
-      const bx = -64 + i * 16;
-      c.fillStyle = i % 2 ? STALL_YELLOW : STALL_RED;
-      c.beginPath();
-      c.moveTo(-56 + i * 14, -134); c.lineTo(-56 + (i + 1) * 14, -134);
-      c.lineTo(bx + 16, -118); c.arc(bx + 8, -118, 8, 0, Math.PI);
-      c.closePath(); c.fill();
-    }
-    c.fillStyle = 'rgba(255,255,255,0.2)'; c.fillRect(-56, -134, 112, 3);
-    for (let i = 0; i <= 8; i++) {
-      const x = -64 + i * 16;
-      c.fillStyle = 'rgba(255,225,120,0.4)'; c.beginPath(); c.arc(x, -116, 3.2, 0, Math.PI * 2); c.fill();
-      c.fillStyle = '#fff3b0'; c.beginPath(); c.arc(x, -116, 1.6, 0, Math.PI * 2); c.fill();
-    }
-
-    // roof with the Zara sign standing on it
-    c.fillStyle = '#7a3a1c'; rr(c, -62, -139, 124, 6, 2); c.fill();
-    c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(-60, -139, 120, 1.2);
-    c.fillStyle = '#5a2c12'; c.fillRect(-26, -149, 3, 10); c.fillRect(23, -149, 3, 10);
-    c.shadowColor = 'rgba(60,20,0,0.35)'; c.shadowBlur = 3 * s; c.shadowOffsetY = 1.5 * s;
-    if (LOGO.img) {
-      const w = 76, h = (w * LOGO.img.naturalHeight) / LOGO.img.naturalWidth;
-      c.drawImage(LOGO.img, -w / 2, -143 - h, w, h);
-    } else {
-      rr(c, -38, -186, 76, 43, 12);
-      c.fillStyle = '#f0b542'; c.fill();
-      c.shadowColor = 'transparent';
-      c.lineWidth = 3; c.strokeStyle = BRAND_RED; c.stroke();
-      c.fillStyle = BRAND_RED; c.font = '26px "Lilita One", "Fredoka", sans-serif';
-      c.fillText('Zara', 0, -164);
-    }
-    c.restore();
-  }
-
-  function paintUrn(c, x, base) {
-    c.fillStyle = '#4d565e'; rr(c, x - 11, base - 4, 22, 4, 1.5); c.fill();
-    const g = c.createLinearGradient(x - 12, 0, x + 12, 0);
-    g.addColorStop(0, '#7d8993'); g.addColorStop(0.35, '#f3f6f8'); g.addColorStop(0.7, '#b9c3cb'); g.addColorStop(1, '#6b7680');
-    c.fillStyle = g; rr(c, x - 12, base - 28, 24, 25, 6); c.fill();
-    c.beginPath(); c.ellipse(x, base - 28, 9, 4, 0, Math.PI, 0); c.fill();
-    c.fillStyle = STALL_RED; c.fillRect(x - 12, base - 19, 24, 6);
-    c.fillStyle = STALL_YELLOW; c.fillRect(x - 12, base - 16.7, 24, 1.4);
-    c.fillStyle = '#3d1a08'; c.beginPath(); c.arc(x, base - 33, 1.8, 0, Math.PI * 2); c.fill();
-    c.fillStyle = '#d9a441'; rr(c, x + 10, base - 11, 7, 3, 1.5); c.fill();
-    c.fillRect(x + 15, base - 9, 2, 3);
-  }
-
-  // a red Zara cup of coffee, or a glass of milk tea
-  function paintCup(c, x, base, glass) {
-    c.fillStyle = '#f6f1ea';
-    c.beginPath(); c.ellipse(x, base - 1, 8, 2, 0, 0, Math.PI * 2); c.fill();
-    c.beginPath(); c.moveTo(x - 6, base - 11); c.lineTo(x + 6, base - 11); c.lineTo(x + 4, base - 2); c.lineTo(x - 4, base - 2); c.closePath();
-    if (glass) {
-      c.fillStyle = '#c88a52'; c.fill();
-      c.strokeStyle = 'rgba(255,255,255,0.9)'; c.lineWidth = 1; c.stroke();
-      c.fillStyle = '#f3dcbc';
-    } else {
-      c.fillStyle = STALL_RED; c.fill();
-      c.strokeStyle = STALL_RED; c.lineWidth = 1.6;
-      c.beginPath(); c.arc(x + 5.4, base - 7, 2.6, -Math.PI / 2, Math.PI / 2); c.stroke();
-      c.fillStyle = STALL_YELLOW; c.fillRect(x - 5.3, base - 8, 10.6, 1.4);
-      c.fillStyle = '#5e2f14';
-    }
-    c.beginPath(); c.ellipse(x, base - 11, 6, 1.5, 0, 0, Math.PI * 2); c.fill();
+    c.beginPath(); c.ellipse(STALL.x, STALL.y, STALL.w * 0.56, 5, 0, 0, Math.PI * 2); c.fill();
+    const img = STALL.img;
+    if (!img) return;
+    const h = (STALL.w * img.naturalHeight) / img.naturalWidth;
+    c.imageSmoothingQuality = 'high';
+    c.drawImage(img, STALL.x - STALL.w / 2, STALL.y - h, STALL.w, h);
   }
 
   function paintCloud(c) {
@@ -1193,26 +1079,7 @@
     const bottom = view.ground + 24 + S.camY * 0.5;
     if (bottom - SCENE_H > view.h) return;
     c.drawImage(art.scene, 0, bottom - SCENE_H, VW, SCENE_H);
-    drawStallSteam(c, bottom - SCENE_H);
     if (bottom < view.h + 20) { c.fillStyle = '#4b9e36'; c.fillRect(-20, bottom - 1, VW + 40, view.h - bottom + 40); }
-  }
-
-  // the stall itself is baked into the scene; only its steam moves
-  function drawStallSteam(c, sceneTop) {
-    const t = performance.now() / 1000, k = STALL.k;
-    const vents = [[STALL_URN, -80, 0.8], ...STALL_CUPS.map((x) => [x, -58, 1])];
-    vents.forEach(([lx, ly, size], v) => {
-      const x0 = STALL.x + lx * k, y0 = sceneTop + STALL.y + ly * k;
-      for (let j = 0; j < 3; j++) {
-        const p = (t * 0.35 + j / 3 + v * 0.37) % 1;
-        const x = x0 + Math.sin(p * 6 + v) * 2.5 * k, y = y0 - p * 20 * k, r = (2.5 + p * 4.5) * size * k;
-        const g = c.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, `rgba(255,255,255,${(0.42 * Math.sin(p * Math.PI)).toFixed(3)})`);
-        g.addColorStop(1, 'rgba(255,255,255,0)');
-        c.fillStyle = g;
-        c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
-      }
-    });
   }
 
   function drawTable(c) {
@@ -1494,17 +1361,15 @@
   el.phone.value = store.get('phone', '');
   el.btnSound.textContent = 'Sound: ' + (Sound.on ? 'On' : 'Off');
 
-  // pack heights come from the photos and the background stall shows the logo, so the game waits for
-  // them before the first round
+  // pack heights come from the photos and the background stall is baked into the scene, so the game
+  // waits for them before the first round
   const loadImage = (item) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => { item.img = img; resolve(); };
     img.onerror = () => { console.error('Could not load image', item.src); resolve(); };
     img.src = item.src;
   });
-  const artReady = Promise.all([...PACKS.map(loadImage), loadImage(LOGO)]).then(() => { art.px = 0; resize(); });
-  // the stall's tagline is baked into the scene canvas, so repaint it once the web fonts are in
-  if (document.fonts) document.fonts.ready.then(() => { art.px = 0; resize(); });
+  const artReady = Promise.all([...PACKS.map(loadImage), loadImage(STALL)]).then(() => { art.px = 0; resize(); });
 
   buildCollage();
   splitTitle();
