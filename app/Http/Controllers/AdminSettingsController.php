@@ -11,7 +11,13 @@ class AdminSettingsController extends Controller
 {
     public function edit(): View
     {
-        return view('admin.settings', ['settings' => Setting::current(), 'levels' => Setting::PHYSICS_LEVELS, 'maxLives' => Setting::MAX_LIVES]);
+        return view('admin.settings', [
+            'settings' => Setting::current(),
+            'levels' => Setting::PHYSICS_LEVELS,
+            'speedLevels' => Setting::SPEED_LEVELS,
+            'maxLives' => Setting::MAX_LIVES,
+            'maxPacksPerLevel' => Setting::MAX_PACKS_PER_LEVEL,
+        ]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -21,6 +27,8 @@ class AdminSettingsController extends Controller
             'closed_message' => ['nullable', 'string', 'max:300'],
             'physics_difficulty' => ['required', 'integer', 'between:1,'.count(Setting::PHYSICS_LEVELS)],
             'lives' => ['required', 'integer', 'between:1,'.Setting::MAX_LIVES],
+            'speed_difficulty' => ['required', 'integer', 'between:1,'.count(Setting::SPEED_LEVELS)],
+            'packs_per_level' => ['required', 'integer', 'between:1,'.Setting::MAX_PACKS_PER_LEVEL],
         ]);
 
         Setting::saveMany([
@@ -30,6 +38,8 @@ class AdminSettingsController extends Controller
             'physics_enabled' => $request->boolean('physics_enabled'),
             'physics_difficulty' => (int) $data['physics_difficulty'],
             'lives' => (int) $data['lives'],
+            'speed_difficulty' => (int) $data['speed_difficulty'],
+            'packs_per_level' => (int) $data['packs_per_level'],
         ]);
 
         return redirect()->route('admin.settings')->with('status', 'Settings saved.');

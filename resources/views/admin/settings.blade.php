@@ -26,10 +26,10 @@
   .state--off { background: #fde4e4; color: var(--red-dark); }
   .state--muted { background: #f3e8d8; color: var(--muted); }
 
-  .lives-field { display: flex; align-items: center; gap: 14px; }
-  .lives-field .field-label { margin: 0; }
-  .lives-field input { width: 110px; padding: 10px 16px; border: 2px solid var(--line); border-radius: 999px; background: #fff; font: 600 20px 'Fredoka', sans-serif; color: var(--brown-dark); text-align: center; outline: 0; }
-  .lives-field input:focus { border-color: var(--gold); }
+  .number-field { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .number-field .field-label { margin: 0; }
+  .number-field input { width: 110px; padding: 10px 16px; border: 2px solid var(--line); border-radius: 999px; background: #fff; font: 600 20px 'Fredoka', sans-serif; color: var(--brown-dark); text-align: center; outline: 0; }
+  .number-field input:focus { border-color: var(--gold); }
 
   .difficulty { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); transition: opacity .2s; }
   .difficulty.is-off { opacity: .45; }
@@ -38,6 +38,7 @@
   .difficulty input[type=range] { width: 100%; margin: 6px 0 2px; accent-color: var(--red); cursor: pointer; }
   .difficulty-ends { display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; color: var(--muted); }
   .difficulty p { margin: 8px 0 0; font-size: 14px; }
+  .speed-plan { padding: 10px 14px; border-radius: 14px; background: #fff6e6; color: var(--brown-dark); font-weight: 500; }
 
   .cols { display: grid; grid-template-columns: 1fr 300px; gap: 20px; align-items: start; }
   @media (max-width: 720px) { .cols { grid-template-columns: 1fr; } }
@@ -121,13 +122,42 @@
     <section class="card panel">
       <h2>Lives</h2>
       <p class="muted">Games have no time limit. Players start with this many lives, and every fall costs one: a pack that misses, a pack that tips off the edge, or the tower toppling. The game ends when the last life is gone. Changes apply from each player's next game.</p>
-      <div class="lives-field">
+      <div class="number-field">
         <label class="field-label" for="lives">Lives per game</label>
         <input type="number" id="lives" name="lives" min="1" max="{{ $maxLives }}" step="1" required
                value="{{ old('lives', $settings['lives']) }}">
         <span class="muted">1 to {{ $maxLives }}</span>
       </div>
       @error('lives') <p class="error">{{ $message }}</p> @enderror
+    </section>
+
+    <section class="card panel">
+      <h2>Speed levels</h2>
+      <p class="muted">The moving pack speeds up step by step. Every time a player stacks the set number of packs they go up a level, and the pack moves faster until it reaches top speed. A level is never lost, even when the tower falls. Changes apply from each player's next game.</p>
+      <div class="number-field">
+        <label class="field-label" for="packs-per-level">Level up every</label>
+        <input type="number" id="packs-per-level" name="packs_per_level" min="1" max="{{ $maxPacksPerLevel }}" step="1" required
+               value="{{ old('packs_per_level', $settings['packs_per_level']) }}">
+        <span class="muted">stacked packs (1 to {{ $maxPacksPerLevel }})</span>
+      </div>
+      @error('packs_per_level') <p class="error">{{ $message }}</p> @enderror
+
+      <div class="difficulty">
+        <div class="difficulty-head">
+          <label class="field-label" for="speed-difficulty">Speed difficulty</label>
+          <output id="speed-name" for="speed-difficulty"></output>
+        </div>
+        <input type="range" id="speed-difficulty" name="speed_difficulty" min="1" max="{{ count($speedLevels) }}" step="1"
+               value="{{ old('speed_difficulty', $settings['speed_difficulty']) }}">
+        <div class="difficulty-ends"><span>{{ $speedLevels[1]['name'] }}</span><span>{{ $speedLevels[count($speedLevels)]['name'] }}</span></div>
+        <p class="muted" id="speed-desc"></p>
+        <p class="speed-plan" id="speed-plan"></p>
+        @error('speed_difficulty') <p class="error">{{ $message }}</p> @enderror
+      </div>
+
+      <span class="state">
+        Right now: {{ $speedLevels[$settings['speed_difficulty']]['name'] }} · level up every {{ $settings['packs_per_level'] }} {{ $settings['packs_per_level'] === 1 ? 'pack' : 'packs' }}
+      </span>
     </section>
 
     <section class="card panel">
@@ -181,6 +211,27 @@
     };
     title.addEventListener('input', sync);
     message.addEventListener('input', sync);
+    sync();
+  })();
+
+  // speed difficulty: name, description and how the levels play out follow the inputs
+  (() => {
+    const levels = @json($speedLevels);
+    const range = document.getElementById('speed-difficulty');
+    const packs = document.getElementById('packs-per-level');
+    const sync = () => {
+      const level = levels[range.value];
+      const every = Math.max(1, parseInt(packs.value, 10) || 1);
+      const top = level.step > 0 ? Math.ceil((level.max / level.start - 1) / level.step - 1e-9) + 1 : 1;
+      const times = Math.round((level.max / level.start) * 10) / 10;
+      document.getElementById('speed-name').textContent = `${range.value} · ${level.name}`;
+      document.getElementById('speed-desc').textContent = level.description;
+      document.getElementById('speed-plan').textContent =
+        `Each level adds ${Math.round(level.step * 100)}% of the starting speed. Top speed (${times}× the start) `
+        + `comes at level ${top}, after ${(top - 1) * every} stacked ${(top - 1) * every === 1 ? 'pack' : 'packs'}.`;
+    };
+    range.addEventListener('input', sync);
+    packs.addEventListener('input', sync);
     sync();
   })();
 

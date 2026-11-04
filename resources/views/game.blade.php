@@ -186,6 +186,11 @@
       <header class="hud" id="hud">
         <div class="hud-row">
           <img class="logo logo--sm" src="{{ asset('game/assets/logo-badge.png') }}" alt="Zara">
+          <div class="hud-level" id="level-box" role="status" aria-label="Level 1">
+            <span class="hud-level-label" aria-hidden="true">Level</span>
+            <b class="hud-level-num" id="level" aria-hidden="true">1</b>
+            <span class="speed-gauge" id="speed-gauge" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span>
+          </div>
           <button type="button" class="pause-btn" id="btn-pause" aria-label="Pause">
             <svg viewBox="0 0 24 24"><rect x="5" y="3" width="5" height="18" rx="1.5"/><rect x="14" y="3" width="5" height="18" rx="1.5"/></svg>
           </button>

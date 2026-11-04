@@ -573,7 +573,7 @@ button { font-family: inherit; }
   padding: calc(var(--safe-top) + 10px) 14px 0;
   pointer-events: none;
 }
-.hud-row { display: flex; align-items: center; justify-content: space-between; }
+.hud-row { position: relative; display: flex; align-items: center; justify-content: space-between; }
 .hud button { pointer-events: auto; }
 
 .pause-btn {
@@ -639,6 +639,50 @@ button { font-family: inherit; }
   white-space: nowrap;
   pointer-events: none;
   animation: hudPop .9s ease-out forwards;
+}
+
+/* the speed level, centred in the top row; the gauge fills up toward top speed */
+.hud-level {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 14px;
+  border: 2px solid #ffd23f;
+  border-radius: 999px;
+  background: linear-gradient(#e4252b, #a8141a);
+  color: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .3);
+  white-space: nowrap;
+}
+.hud-level-label { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+.hud-level-num { font-family: 'Lilita One', sans-serif; font-weight: 400; font-size: 24px; line-height: 1.05; }
+.speed-gauge { display: flex; align-items: flex-end; gap: 2px; height: 16px; margin-left: 2px; }
+.speed-gauge i { width: 4px; border-radius: 2px; background: rgba(255, 255, 255, .3); transition: background .3s; }
+.speed-gauge i:nth-child(1) { height: 6px; }
+.speed-gauge i:nth-child(2) { height: 8.5px; }
+.speed-gauge i:nth-child(3) { height: 11px; }
+.speed-gauge i:nth-child(4) { height: 13.5px; }
+.speed-gauge i:nth-child(5) { height: 16px; }
+.speed-gauge i.on { background: #ffd23f; }
+.hud-level.max .speed-gauge i.on { background: #fff6b8; box-shadow: 0 0 5px #ffd23f; }
+.hud-level.level-up { animation: levelUp .75s ease-out; }
+.level-tag {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 6px);
+  transform: translateX(-50%);
+  font-family: 'Lilita One', sans-serif;
+  font-size: 19px;
+  color: #ffd23f;
+  -webkit-text-stroke: 5px #4a220c;
+  paint-order: stroke fill;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: levelTag 1.4s ease-out forwards;
 }
 
 .tap-hint {
@@ -896,6 +940,17 @@ button { font-family: inherit; }
   20% { opacity: 1; transform: translate(0, -50%) scale(1.15); }
   100% { opacity: 0; transform: translate(14px, -50%) scale(1); }
 }
+@keyframes levelUp {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.3); box-shadow: 0 0 0 4px rgba(255, 210, 63, .55), 0 0 22px #ffd23f; }
+  100% { transform: scale(1); }
+}
+@keyframes levelTag {
+  0% { opacity: 0; transform: translate(-50%, -8px) scale(.6); }
+  15% { opacity: 1; transform: translate(-50%, 0) scale(1.15); }
+  70% { opacity: 1; transform: translate(-50%, 3px) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, 8px) scale(1); }
+}
 @keyframes cardIn { from { transform: translateY(20px) scale(.95); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes spin90 { from { transform: rotate(0); } to { transform: rotate(-90deg); } }
 
@@ -968,7 +1023,7 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .decor i, .tap-hint svg, .sunburst, .hero-glow, .wave, .pk, .title .ch, .rays,
   .screen--start .logo, .play-wrap, .play-wrap::before, .btn--play::after, .btn--play svg, .collage::before,
-  .screen--start.is-closed .closed-card, .pk img.swap,
+  .screen--start.is-closed .closed-card, .pk img.swap, .hud-level.level-up, .level-tag,
   .cup, .latte i, .choc-drip, .choc-drip .d { animation: none; }
   .fall, .sparkles, .steam, .bubble, .drop-lane, .ripple { display: none; }
 }

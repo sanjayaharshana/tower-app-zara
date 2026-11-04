@@ -44,7 +44,10 @@
   const PERFECT_TOL = 7;
   const DROP_GAP = 190;   // distance kept between the moving pack and the tower top
   const GRAVITY = 3000;
-  const BASE_SPEED = 230, MAX_SPEED = 560, SPEED_STEP = 0.06;
+  // How the moving pack speeds up: every `packs` stacked packs the level goes up and the pack gets
+  // `step` × its starting speed faster, up to `max` (speeds in units per second). Admin → Settings picks
+  // the numbers (status.speed, from Setting::SPEED_LEVELS on the server); these are used if it doesn't say.
+  const SPEED = { start: 230, step: 0.25, max: 560, packs: 5 };
   const SCENE_H = 330;
   // Zara tea stall on the lawn right of the tower, a transparent cut-out picture:
   // x, y = middle of its base in scene units, w = width in scene units.
@@ -149,6 +152,10 @@
     miss() { this.tone(330, 0.45, { type: 'sawtooth', vol: 0.07, to: 70 }); },
     collapse() { [0, 0.08, 0.16, 0.24].forEach((d, i) => this.tone(200 - i * 30, 0.18, { vol: 0.3, to: 50, delay: d })); },
     pop() { this.tone(620, 0.12, { type: 'triangle', vol: 0.12, to: 1100 }); },
+    levelUp() {
+      [523, 659, 784, 1046].forEach((f, i) => this.tone(f, 0.14, { type: 'square', vol: 0.045, delay: 0.12 + i * 0.07 }));
+      this.tone(260, 0.35, { type: 'triangle', vol: 0.07, to: 900, delay: 0.1 });
+    },
     over() { [784, 659, 523, 392].forEach((f, i) => this.tone(f, 0.22, { type: 'triangle', vol: 0.13, delay: i * 0.13 })); },
   };
 
@@ -159,6 +166,7 @@
     form: $('start-form'), nick: $('nickname'), phone: $('phone'), collage: $('collage'),
     nameField: $('name-field'), phoneField: $('phone-field'),
     lives: $('lives'), livesBox: $('lives-box'), score: $('score'), scoreBox: $('score-box'),
+    level: $('level'), levelBox: $('level-box'), speedGauge: $('speed-gauge'),
     tapHint: $('tap-hint'), countdown: $('countdown'), banner: $('banner'),
     pauseOverlay: $('pause-overlay'), btnPause: $('btn-pause'), btnResume: $('btn-resume'),
     btnRestart: $('btn-restart'), btnSound: $('btn-sound'), btnQuit: $('btn-quit'),
@@ -375,7 +383,9 @@
   let tipIndex = 0;
   function nextTip() {
     if (!el.screens.start.classList.contains('active')) return;
-    const tips = [...TIPS, `You have ${rules.lives} ${rules.lives === 1 ? 'life' : 'lives'}: every fall costs one`];
+    const every = rules.speed.packs === 1 ? 'Every pack' : `Every ${rules.speed.packs} packs`;
+    const tips = [...TIPS, `You have ${rules.lives} ${rules.lives === 1 ? 'life' : 'lives'}: every fall costs one`,
+      `${every} you level up and the pack moves faster`];
     if (physics.enabled) tips.push('The tower sways, so time your drop!');
     tipIndex = (tipIndex + 1) % tips.length;
     el.tip.classList.remove('enter', 'swap');
@@ -409,9 +419,11 @@
   // ───────────────────────── State ─────────────────────────
   const S = {
     mode: 'menu', prevMode: 'play', round: 0,
-    time: 0, score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
+    score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
     tower: [], mover: null, debris: [], parts: [], texts: [], flashes: [],
     lives: 0, maxLives: 0, bestHeight: 0,
+    // speed rules for this round (a copy of rules.speed), the level reached and the pack's speed there
+    sp: SPEED, level: 1, speed: SPEED.start,
     camY: 0, shake: 0, spawnIn: 0, dir: 1, lastPack: -1, recentPacks: [],
     cdStep: 0, cdTimer: 0, firstDrop: false, submitted: false, overTimer: 0,
     // tower physics for this round (a PHYSICS_LEVELS row, or null for the normal game), the tower's
@@ -423,7 +435,8 @@
   let clouds = [];
   let roundNo = 0; // S.round: tells a late server reply which round it belongs to
 
-  const speed = () => Math.min(MAX_SPEED, BASE_SPEED * (1 + SPEED_STEP * S.landed));
+  const speed = () => S.speed;
+  const levelSpeed = (level) => Math.min(S.sp.max, S.sp.start * (1 + S.sp.step * (level - 1)));
   const newPack = (x, f, y) => ({ x, f, y, h: packH(f), rot: 0, rv: 0, sq: 0 });
   // world y where the next pack lands
   const topY = () => { const t = S.tower[S.tower.length - 1]; return t.y + t.h * (1 - OVERLAP); };
@@ -481,6 +494,7 @@
       phys: physics.enabled ? PHYSICS_LEVELS[clamp(Math.round(physics.difficulty) || 3, 1, 5)] : null,
       sway: { d: 0, H: 0, phase: 0, lean: 0, kx: 0, kv: 0, risk: 0 },
       toppling: [],
+      sp: { ...rules.speed }, level: 1, speed: rules.speed.start,
       lives: rules.lives, maxLives: rules.lives, bestHeight: 0, score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
       tower: [newPack(VW / 2, BASE_PACK, 0)], mover: null, debris: [], parts: [], texts: [], flashes: [],
       camY: 0, shake: 0, spawnIn: 0, dir: 1, lastPack: -1, recentPacks: [BASE_PACK],
@@ -488,6 +502,7 @@
     });
     S.sway.H = topY();
     renderLives();
+    renderLevel(false);
     // every round (Play, Play Again, Restart) is its own play on the server; the game never waits for it
     S.playReq = api('start', { name: store.get('nick', ''), phone: store.get('phone', '') })
       .then((r) => r.play_id)
@@ -581,6 +596,9 @@
     }
     S.score += pts;
     bump(el.scoreBox);
+    // every few stacked packs the level goes up and the next pack moves faster
+    const level = 1 + Math.floor(S.landed / S.sp.packs);
+    if (level > S.level) levelUp(level);
     // with physics on the balance is checked every frame (see update)
     if (!S.phys) checkStability();
   }
@@ -645,6 +663,35 @@
       heart.className = 'heart' + (i >= S.lives ? ' lost' : '');
       el.lives.appendChild(heart);
     }
+  }
+
+  function levelUp(level) {
+    const before = S.speed;
+    S.level = level;
+    S.speed = levelSpeed(level);
+    renderLevel(true);
+    let tag = 'LEVEL UP!';
+    if (S.speed > before) tag = S.speed >= S.sp.max ? 'TOP SPEED!' : 'FASTER!';
+    const t = document.createElement('span');
+    t.className = 'level-tag';
+    t.textContent = tag;
+    el.levelBox.appendChild(t);
+    setTimeout(() => t.remove(), 1400);
+    Sound.levelUp();
+  }
+
+  // the level number, and a gauge that fills up as the pack nears top speed (all five bars only at top speed)
+  function renderLevel(animate) {
+    el.level.textContent = S.level;
+    el.levelBox.setAttribute('aria-label', 'Level ' + S.level);
+    const range = S.sp.max - S.sp.start;
+    const atTop = S.speed >= S.sp.max;
+    const lit = atTop ? 5 : 1 + Math.floor(((S.speed - S.sp.start) / range) * 4);
+    [...el.speedGauge.children].forEach((bar, i) => bar.classList.toggle('on', i < lit));
+    el.levelBox.classList.toggle('max', atTop);
+    el.levelBox.querySelectorAll('.level-tag').forEach((t) => t.remove());
+    el.levelBox.classList.remove('level-up');
+    if (animate) { void el.levelBox.offsetWidth; el.levelBox.classList.add('level-up'); }
   }
 
   // ───────────────────────── Tower physics ─────────────────────────
@@ -839,13 +886,18 @@
 
   // Admin → Settings, via the page and the status poll: the admin can disable playing (the start screen
   // then shows their notice in place of the form) and switch on tower physics for the next round.
-  // status: { open, title, message, lives, physics: { enabled, difficulty } }
+  // status: { open, title, message, lives, speed: { difficulty, start, step, max, packs_per_level },
+  //           physics: { enabled, difficulty } }
   let gameOpen = true;
   let physics = { enabled: false, difficulty: 3 };
-  const rules = { lives: CONFIG.LIVES };
+  const rules = { lives: CONFIG.LIVES, speed: SPEED };
   function applyStatus(status) {
     if (status.physics) physics = status.physics;
     if (status.lives) rules.lives = clamp(Math.round(status.lives), 1, 20);
+    const sp = status.speed;
+    if (sp && sp.start > 0 && sp.max >= sp.start && sp.step >= 0 && sp.packs_per_level >= 1) {
+      rules.speed = { start: +sp.start, step: +sp.step, max: +sp.max, packs: Math.round(sp.packs_per_level) };
+    }
     gameOpen = !!status.open;
     el.screens.start.classList.toggle('is-closed', !gameOpen);
     el.closedTitle.textContent = status.title || '';

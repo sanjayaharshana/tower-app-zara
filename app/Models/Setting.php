@@ -15,10 +15,29 @@ class Setting extends Model
         'physics_enabled' => false,
         'physics_difficulty' => 3,
         'lives' => 7,
+        'speed_difficulty' => 3,
+        'packs_per_level' => 5,
     ];
 
     /** Most lives a game can start with. */
     public const MAX_LIVES = 20;
+
+    /** Most packs a player may need to stack to go up a level. */
+    public const MAX_PACKS_PER_LEVEL = 20;
+
+    /**
+     * How the moving pack speeds up, per speed difficulty. Players go up a level every packs_per_level
+     * stacked packs. `start` is the pack's speed at level 1 in game units per second (the game screen is
+     * 400 units wide), each level adds `step` times that, and it never goes faster than `max`.
+     * The game gets these numbers through gameStatus().
+     */
+    public const SPEED_LEVELS = [
+        1 => ['name' => 'Very easy', 'description' => 'Starts slow and speeds up gently.', 'start' => 170, 'step' => 0.15, 'max' => 380],
+        2 => ['name' => 'Easy', 'description' => 'A relaxed start that gets a little faster each level.', 'start' => 200, 'step' => 0.18, 'max' => 460],
+        3 => ['name' => 'Normal', 'description' => 'A steady start that gets noticeably faster each level.', 'start' => 230, 'step' => 0.25, 'max' => 560],
+        4 => ['name' => 'Hard', 'description' => 'Starts quick and speeds up sharply each level.', 'start' => 260, 'step' => 0.3, 'max' => 640],
+        5 => ['name' => 'Very hard', 'description' => 'Starts fast and soon reaches top speed. For experts.', 'start' => 300, 'step' => 0.4, 'max' => 720],
+    ];
 
     /**
      * Tower physics difficulty levels. The game's tuning for each level is PHYSICS_LEVELS in
@@ -68,7 +87,7 @@ class Setting extends Model
 
     /**
      * What the game page needs: whether new rounds can start, the notice shown if not, and the rules
-     * for the next round (lives, and how the tower behaves).
+     * for the next round (lives, how the moving pack speeds up, and how the tower behaves).
      */
     public static function gameStatus(): array
     {
@@ -79,6 +98,13 @@ class Setting extends Model
             'title' => $settings['closed_title'],
             'message' => $settings['closed_message'],
             'lives' => $settings['lives'],
+            'speed' => [
+                'difficulty' => $settings['speed_difficulty'],
+                'start' => self::SPEED_LEVELS[$settings['speed_difficulty']]['start'],
+                'step' => self::SPEED_LEVELS[$settings['speed_difficulty']]['step'],
+                'max' => self::SPEED_LEVELS[$settings['speed_difficulty']]['max'],
+                'packs_per_level' => $settings['packs_per_level'],
+            ],
             'physics' => [
                 'enabled' => $settings['physics_enabled'],
                 'difficulty' => $settings['physics_difficulty'],
