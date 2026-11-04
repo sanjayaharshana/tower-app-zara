@@ -11,7 +11,7 @@ class AdminSettingsController extends Controller
 {
     public function edit(): View
     {
-        return view('admin.settings', ['settings' => Setting::current(), 'levels' => Setting::PHYSICS_LEVELS]);
+        return view('admin.settings', ['settings' => Setting::current(), 'levels' => Setting::PHYSICS_LEVELS, 'maxLives' => Setting::MAX_LIVES]);
     }
 
     public function update(Request $request): RedirectResponse
@@ -20,6 +20,7 @@ class AdminSettingsController extends Controller
             'closed_title' => ['required', 'string', 'max:60'],
             'closed_message' => ['nullable', 'string', 'max:300'],
             'physics_difficulty' => ['required', 'integer', 'between:1,'.count(Setting::PHYSICS_LEVELS)],
+            'lives' => ['required', 'integer', 'between:1,'.Setting::MAX_LIVES],
         ]);
 
         Setting::saveMany([
@@ -28,6 +29,7 @@ class AdminSettingsController extends Controller
             'closed_message' => $data['closed_message'] ?? '',
             'physics_enabled' => $request->boolean('physics_enabled'),
             'physics_difficulty' => (int) $data['physics_difficulty'],
+            'lives' => (int) $data['lives'],
         ]);
 
         return redirect()->route('admin.settings')->with('status', 'Settings saved.');

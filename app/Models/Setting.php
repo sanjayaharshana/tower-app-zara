@@ -14,7 +14,11 @@ class Setting extends Model
         'closed_message' => "The Tower Challenge isn't open right now.\nPlease check back soon!",
         'physics_enabled' => false,
         'physics_difficulty' => 3,
+        'lives' => 7,
     ];
+
+    /** Most lives a game can start with. */
+    public const MAX_LIVES = 20;
 
     /**
      * Tower physics difficulty levels. The game's tuning for each level is PHYSICS_LEVELS in
@@ -63,8 +67,8 @@ class Setting extends Model
     }
 
     /**
-     * What the game page needs: whether new rounds can start, the notice shown if not, and how the
-     * tower behaves in the next round.
+     * What the game page needs: whether new rounds can start, the notice shown if not, and the rules
+     * for the next round (lives, and how the tower behaves).
      */
     public static function gameStatus(): array
     {
@@ -74,6 +78,7 @@ class Setting extends Model
             'open' => ! $settings['playing_disabled'],
             'title' => $settings['closed_title'],
             'message' => $settings['closed_message'],
+            'lives' => $settings['lives'],
             'physics' => [
                 'enabled' => $settings['physics_enabled'],
                 'difficulty' => $settings['physics_difficulty'],

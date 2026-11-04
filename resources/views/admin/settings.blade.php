@@ -26,6 +26,11 @@
   .state--off { background: #fde4e4; color: var(--red-dark); }
   .state--muted { background: #f3e8d8; color: var(--muted); }
 
+  .lives-field { display: flex; align-items: center; gap: 14px; }
+  .lives-field .field-label { margin: 0; }
+  .lives-field input { width: 110px; padding: 10px 16px; border: 2px solid var(--line); border-radius: 999px; background: #fff; font: 600 20px 'Fredoka', sans-serif; color: var(--brown-dark); text-align: center; outline: 0; }
+  .lives-field input:focus { border-color: var(--gold); }
+
   .difficulty { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--line); transition: opacity .2s; }
   .difficulty.is-off { opacity: .45; }
   .difficulty-head { display: flex; align-items: baseline; justify-content: space-between; }
@@ -111,6 +116,18 @@
           </div>
         </div>
       </div>
+    </section>
+
+    <section class="card panel">
+      <h2>Lives</h2>
+      <p class="muted">Games have no time limit. Players start with this many lives, and every fall costs one: a pack that misses, a pack that tips off the edge, or the tower toppling. The game ends when the last life is gone. Changes apply from each player's next game.</p>
+      <div class="lives-field">
+        <label class="field-label" for="lives">Lives per game</label>
+        <input type="number" id="lives" name="lives" min="1" max="{{ $maxLives }}" step="1" required
+               value="{{ old('lives', $settings['lives']) }}">
+        <span class="muted">1 to {{ $maxLives }}</span>
+      </div>
+      @error('lives') <p class="error">{{ $message }}</p> @enderror
     </section>
 
     <section class="card panel">

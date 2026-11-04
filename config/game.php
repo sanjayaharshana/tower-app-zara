@@ -25,8 +25,9 @@ return [
     'max_points_per_second' => 500,
 
     /*
-    | A round must be finished within this many seconds of starting.
+    | A round must be finished within this many seconds of starting. Rounds have no time limit
+    | (they last until the player runs out of lives), so this only turns away stale rounds.
     */
-    'max_round_seconds' => 900,
+    'max_round_seconds' => 3600,
 
 ];

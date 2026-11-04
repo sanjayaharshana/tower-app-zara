@@ -191,7 +191,7 @@
           </button>
         </div>
         <div class="hud-row">
-          <div class="hud-box hud-box--time" id="time-box"><span class="hud-label">Time Left</span><span class="hud-val" id="time">00:30</span></div>
+          <div class="hud-box hud-box--lives" id="lives-box"><span class="hud-label">Lives</span><span class="lives" id="lives" role="img" aria-label="Lives"></span></div>
           <div class="hud-box hud-box--score" id="score-box"><span class="hud-label">Score</span><span class="hud-val" id="score">0</span></div>
         </div>
       </header>
@@ -202,7 +202,7 @@
       </div>
 
       <div class="countdown" id="countdown" aria-live="assertive"></div>
-      <div class="banner" id="banner">TIME'S UP!</div>
+      <div class="banner" id="banner">OUT OF<br>LIVES!</div>
 
       <div class="overlay" id="pause-overlay">
         <div class="card" role="dialog" aria-modal="true" aria-labelledby="pause-title">

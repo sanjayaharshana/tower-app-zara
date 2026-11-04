@@ -17,13 +17,31 @@ class LeaderboardScreenController extends Controller
     /** Latest finished rounds in the "Just played" ticker. */
     private const RECENT = 8;
 
+    /**
+     * The footer shows a [200g pouch, 25g sachet] at a time from public/game/assets/packs, always of two
+     * different flavours (they look alike side by side otherwise), and comes round to all ten.
+     */
+    public const PACK_PAIRS = [
+        ['bombay-chai-pouch.webp', 'cafe.webp'],
+        ['cardamom-pouch.webp', 'choco.webp'],
+        ['cafe-pouch.webp', 'cafe-ice.webp'],
+        ['choco-pouch.webp', 'bombay-chai.webp'],
+        ['cafe-ice-pouch.webp', 'cardamom-milk-tea.webp'],
+    ];
+
     public function show(): View
     {
+        $packPairs = array_map(
+            fn (array $pair) => array_map(fn (string $file) => asset('game/assets/packs/'.$file), $pair),
+            self::PACK_PAIRS,
+        );
+
         // read by public/game/leaderboard.js as window.KIOSK
-        return view('leaderboard', ['kiosk' => [
+        return view('leaderboard', ['packPairs' => $packPairs, 'kiosk' => [
             'dataUrl' => route('leaderboard.data'),
             'playUrl' => route('game'),
             'pollMs' => 3000,
+            'packPairs' => $packPairs,
         ]]);
     }
 

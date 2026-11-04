@@ -104,9 +104,9 @@
           <div class="cta-sub" id="cta-sub">Stack the packs. Top the board.</div>
           <div class="cta-url" id="cta-url"></div>
         </div>
-        <div class="foot-packs" aria-hidden="true">
-          <img src="{{ asset('game/assets/packs/cardamom-pouch.webp') }}" alt="">
-          <img src="{{ asset('game/assets/packs/cafe.webp') }}" alt="">
+        <div class="foot-packs" id="foot-packs" aria-hidden="true">
+          <img src="{{ $packPairs[0][0] }}" alt="">
+          <img src="{{ $packPairs[0][1] }}" alt="">
         </div>
       </div>
     </footer>

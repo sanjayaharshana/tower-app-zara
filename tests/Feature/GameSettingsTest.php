@@ -31,6 +31,7 @@ class GameSettingsTest extends TestCase
             'open' => true,
             'title' => Setting::DEFAULTS['closed_title'],
             'message' => Setting::DEFAULTS['closed_message'],
+            'lives' => 7,
             'physics' => ['enabled' => false, 'difficulty' => 3],
         ]);
 
@@ -43,7 +44,7 @@ class GameSettingsTest extends TestCase
     public function test_admin_can_disable_playing_and_set_the_message(): void
     {
         $this->withSession(['admin_auth' => true])
-            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => 'Back at 6 pm', 'closed_message' => "See you\nsoon!", 'physics_difficulty' => '3'])
+            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => 'Back at 6 pm', 'closed_message' => "See you\nsoon!", 'physics_difficulty' => '3', 'lives' => '7'])
             ->assertRedirect('/admin/settings')
             ->assertSessionHas('status');
 
@@ -52,7 +53,7 @@ class GameSettingsTest extends TestCase
 
         // the hidden "0" is all that's sent when the checkbox is unticked
         $this->withSession(['admin_auth' => true])
-            ->put('/admin/settings', ['playing_disabled' => '0', 'closed_title' => 'Back at 6 pm', 'closed_message' => '', 'physics_difficulty' => '3'])
+            ->put('/admin/settings', ['playing_disabled' => '0', 'closed_title' => 'Back at 6 pm', 'closed_message' => '', 'physics_difficulty' => '3', 'lives' => '7'])
             ->assertRedirect('/admin/settings');
 
         $this->getJson('/game/status')->assertJson(['open' => true, 'message' => '']);
@@ -61,8 +62,8 @@ class GameSettingsTest extends TestCase
     public function test_settings_need_a_title_and_keep_the_texts_short(): void
     {
         $this->withSession(['admin_auth' => true])
-            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => '', 'closed_message' => str_repeat('a', 301), 'physics_difficulty' => '6'])
-            ->assertSessionHasErrors(['closed_title', 'closed_message', 'physics_difficulty']);
+            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => '', 'closed_message' => str_repeat('a', 301), 'physics_difficulty' => '6', 'lives' => '0'])
+            ->assertSessionHasErrors(['closed_title', 'closed_message', 'physics_difficulty', 'lives']);
 
         $this->assertTrue(Setting::gameStatus()['open']);
     }
@@ -74,7 +75,7 @@ class GameSettingsTest extends TestCase
             ->assertSee('Enable falling physics')
             ->assertSee('physics off, normal game');
 
-        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '1', 'physics_difficulty' => '5'])
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '1', 'physics_difficulty' => '5', 'lives' => '7'])
             ->assertRedirect('/admin/settings');
 
         $this->getJson('/game/status')->assertJsonPath('open', true)
@@ -83,8 +84,26 @@ class GameSettingsTest extends TestCase
         $this->get('/')->assertSee('"physics":{"enabled":true,"difficulty":5}', false);
 
         // switching physics off keeps the chosen difficulty for next time
-        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '0', 'physics_difficulty' => '5']);
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '0', 'physics_difficulty' => '5', 'lives' => '7']);
         $this->getJson('/game/status')->assertJsonPath('physics', ['enabled' => false, 'difficulty' => 5]);
+    }
+
+    public function test_admin_sets_how_many_lives_a_game_starts_with(): void
+    {
+        $admin = $this->withSession(['admin_auth' => true]);
+        $admin->get('/admin/settings')->assertOk()->assertSee('Lives per game')->assertSee('value="7"', false);
+
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '3'])
+            ->assertRedirect('/admin/settings');
+
+        $this->getJson('/game/status')->assertJsonPath('lives', 3);
+        $this->get('/')->assertSee('"lives":3', false);
+
+        foreach (['0', '21', 'many', ''] as $bad) {
+            $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => $bad])
+                ->assertSessionHasErrors('lives');
+        }
+        $this->assertSame(3, Setting::current()['lives']);
     }
 
     public function test_start_screen_shows_the_notice_instead_of_the_form_while_playing_is_disabled(): void

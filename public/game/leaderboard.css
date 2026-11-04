@@ -454,7 +454,8 @@ body.idle { cursor: none; }
 .cta-sub { margin-top: 8px; font-weight: 600; font-size: 30px; color: #fff3df; white-space: nowrap; }
 .cta-url { margin-top: 4px; font-weight: 500; font-size: 22px; color: #d8b48e; letter-spacing: .5px; }
 .foot-packs { position: absolute; right: 40px; top: -60px; bottom: 0; width: 240px; }
-.foot-packs img { position: absolute; bottom: -34px; width: 150px; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .45)); }
+.foot-packs img { position: absolute; bottom: -34px; width: 150px; filter: drop-shadow(0 10px 14px rgba(0, 0, 0, .45)); transition: opacity .4s, scale .4s cubic-bezier(.3, 1.5, .5, 1); }
+.foot-packs.out img { opacity: 0; scale: .6; transition-timing-function: ease-in; }
 .foot-packs img:first-child { left: 0; transform: rotate(-12deg); animation: packBob 3.4s ease-in-out infinite alternate; }
 .foot-packs img:last-child { right: -10px; bottom: -14px; width: 130px; transform: rotate(10deg); animation: packBob 3s ease-in-out .6s infinite alternate-reverse; }
 

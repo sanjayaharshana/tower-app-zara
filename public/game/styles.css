@@ -299,6 +299,8 @@ button { font-family: inherit; }
   -webkit-user-drag: none;
 }
 .pk img.wiggle { animation: wiggle .55s ease-in-out; }
+.pk img.swap { animation: packSwap .52s ease-in-out; }
+@keyframes packSwap { 0%, 100% { transform: none; } 50% { transform: scaleX(0) scaleY(.92); } }
 
 /* play button: pop in, breathe, glow ring and shine */
 .play-wrap {
@@ -599,14 +601,33 @@ button { font-family: inherit; }
   line-height: 1.05;
   box-shadow: 0 4px 10px rgba(0, 0, 0, .2);
 }
-.hud-box--time { background: linear-gradient(#7a3c18, #4f230b); color: #fff; border: 2px solid rgba(255, 255, 255, .25); }
-.hud-box--time.low { background: linear-gradient(#ea3a33, #9c1016); animation: pulse .5s ease-in-out infinite alternate; }
+.hud-box--lives { background: linear-gradient(#7a3c18, #4f230b); color: #fff; border: 2px solid rgba(255, 255, 255, .25); }
+.hud-box--lives.low { background: linear-gradient(#ea3a33, #9c1016); animation: pulse .5s ease-in-out infinite alternate; }
+/* a heart per life; lost ones break and go grey. More than ten lives show as one heart and a count. */
+.lives { display: flex; align-items: center; justify-content: center; gap: 2px; height: 32px; }
+.heart {
+  flex: none;
+  width: var(--hs, 18px);
+  height: var(--hs, 18px);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 22'%3E%3Cpath d='M12 21.5 10.3 20C4.1 14.4 0 10.7 0 6.2 0 2.6 2.8 0 6.4 0c2 0 4 .9 5.6 2.4C13.6.9 15.6 0 17.6 0 21.2 0 24 2.6 24 6.2c0 4.5-4.1 8.2-10.3 13.8L12 21.5Z' fill='%23ff4b47' stroke='%23fff' stroke-width='1.6'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .35));
+  transition: filter .3s, opacity .3s;
+}
+.heart.lost { filter: grayscale(1) brightness(.75); opacity: .4; }
+.heart.breaking { animation: heartBreak .6s ease-in forwards; }
+.lives-count { font-family: 'Lilita One', sans-serif; font-size: 28px; margin-left: 6px; }
+@keyframes heartBreak {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.6) rotate(-12deg); }
+  60% { transform: scale(.8) rotate(10deg); }
+  100% { transform: scale(1); filter: grayscale(1) brightness(.75); opacity: .4; }
+}
 .hud-box--score { background: #fffaf2; color: var(--brown-dark); border: 2px solid #f0dcc0; }
 .hud-label { font-weight: 600; font-size: 14px; }
 .hud-val { font-family: 'Lilita One', sans-serif; font-size: 30px; letter-spacing: .5px; }
 .bump { animation: bump .25s ease-out; }
 
-.time-pop {
+.hud-pop {
   position: absolute;
   left: calc(100% + 8px);
   top: 50%;
@@ -617,9 +638,8 @@ button { font-family: inherit; }
   paint-order: stroke fill;
   white-space: nowrap;
   pointer-events: none;
-  animation: timePop .9s ease-out forwards;
+  animation: hudPop .9s ease-out forwards;
 }
-.time-pop.good { color: #22a335; }
 
 .tap-hint {
   position: absolute;
@@ -871,7 +891,7 @@ button { font-family: inherit; }
   60% { transform: scale(1.1) rotate(-4deg); opacity: 1; }
   100% { transform: scale(1) rotate(-4deg); opacity: 1; }
 }
-@keyframes timePop {
+@keyframes hudPop {
   0% { opacity: 0; transform: translate(-6px, -50%) scale(.6); }
   20% { opacity: 1; transform: translate(0, -50%) scale(1.15); }
   100% { opacity: 0; transform: translate(14px, -50%) scale(1); }
@@ -948,7 +968,7 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .decor i, .tap-hint svg, .sunburst, .hero-glow, .wave, .pk, .title .ch, .rays,
   .screen--start .logo, .play-wrap, .play-wrap::before, .btn--play::after, .btn--play svg, .collage::before,
-  .screen--start.is-closed .closed-card,
+  .screen--start.is-closed .closed-card, .pk img.swap,
   .cup, .latte i, .choc-drip, .choc-drip .d { animation: none; }
   .fall, .sparkles, .steam, .bubble, .drop-lane, .ripple { display: none; }
 }

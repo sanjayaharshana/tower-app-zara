@@ -259,6 +259,23 @@
     el.qr.innerHTML = qr.createSvgTag(4, 0);
   }
 
+  // the footer shows a pouch and a sachet of two different flavours, then moves on to the next pair
+  function cyclePacks() {
+    const pairs = K.packPairs || [];
+    if (pairs.length < 2) return;
+    for (const src of pairs.flat()) new Image().src = src; // preload so a swap never flashes empty
+    const box = $('foot-packs'), [pouch, sachet] = box.querySelectorAll('img');
+    let i = 0;
+    setInterval(() => {
+      i = (i + 1) % pairs.length;
+      box.classList.add('out');
+      setTimeout(() => {
+        [pouch.src, sachet.src] = pairs[i];
+        box.classList.remove('out');
+      }, 420);
+    }, 6000);
+  }
+
   function renderCta(data) {
     el.qrCard.classList.toggle('closed', !data.open);
     el.ctaTitle.textContent = data.open ? 'Scan to play!' : data.closed_title;
@@ -429,6 +446,7 @@
   fit();
   splitTitle();
   drawQr();
+  cyclePacks();
   poll();
   setTimeout(() => document.body.classList.add('idle'), 3000);
 })();

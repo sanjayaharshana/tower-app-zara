@@ -4,10 +4,10 @@
 
   // ───────────────────────── Config ─────────────────────────
   const CONFIG = {
-    GAME_TIME: 30,          // seconds per round
+    // a round has no time limit: it lasts until the lives run out. The number of lives is set in
+    // Admin → Settings (status.lives); this is used if the server doesn't say.
+    LIVES: 7,
     PERFECT_BONUS: 200,     // extra points for a perfect stack
-    PERFECT_TIME_BONUS: 1,  // seconds added for a perfect stack
-    MISS_PENALTY: 3,        // seconds lost when a pack falls off
     // mobile numbers accepted on the start screen (spaces/dashes are stripped first);
     // Sri Lankan mobiles such as 0771234567, +94771234567 or 94771234567.
     // Keep in sync with Player::PHONE_PATTERN on the server.
@@ -17,14 +17,23 @@
   // Asset base and API endpoints, injected by resources/views/game.blade.php
   const SERVER = window.ZARA;
 
-  // Pack photos used for stacking.
+  // Pack photos used for stacking: every flavour as a 25g sachet and a 200g pouch. The images are
+  // transparent cut-outs, trimmed tight and 420px wide. A sachet and a pouch of one flavour look alike,
+  // so two packs of the same flavour are never shown next to each other.
+  const pack = (name, file, flavour) => ({ name, flavour, src: SERVER.assetBase + 'assets/packs/' + file });
   const PACKS = [
-    { name: 'Zara Cafe', src: SERVER.assetBase + 'assets/packs/cafe.webp' },
-    { name: 'Zara Cardamom Milk Tea', src: SERVER.assetBase + 'assets/packs/cardamom-milk-tea.webp' },
-    { name: 'Zara Choco', src: SERVER.assetBase + 'assets/packs/choco.webp' },
-    { name: 'Zara Cafe Ice', src: SERVER.assetBase + 'assets/packs/cafe-ice.webp' },
-    { name: 'Zara Cardamom Milk Tea 200g', src: SERVER.assetBase + 'assets/packs/cardamom-pouch.webp' },
+    pack('Zara Cafe', 'cafe.webp', 'cafe'),
+    pack('Zara Cardamom Milk Tea', 'cardamom-milk-tea.webp', 'cardamom'),
+    pack('Zara Choco', 'choco.webp', 'choco'),
+    pack('Zara Cafe Ice', 'cafe-ice.webp', 'cafe-ice'),
+    pack('Zara Cardamom Milk Tea 200g', 'cardamom-pouch.webp', 'cardamom'),
+    pack('Zara Bombay Chai', 'bombay-chai.webp', 'bombay-chai'),
+    pack('Zara Bombay Chai 200g', 'bombay-chai-pouch.webp', 'bombay-chai'),
+    pack('Zara Choco 200g', 'choco-pouch.webp', 'choco'),
+    pack('Zara Cafe Ice 240g', 'cafe-ice-pouch.webp', 'cafe-ice'),
+    pack('Zara Cafe 200g', 'cafe-pouch.webp', 'cafe'),
   ];
+  const sameFlavour = (a, b) => a >= 0 && b >= 0 && PACKS[a].flavour === PACKS[b].flavour;
   const BASE_PACK = 4; // the stand-up pouch sits on the table at the start
 
   // Logo on the tea stall sign in the background garden.
@@ -69,7 +78,6 @@
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const rand = (a, b) => a + Math.random() * (b - a);
   const fmt = (n) => n.toLocaleString('en-US');
-  const mmss = (s) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
   const easeOutBack = (x) => { const c1 = 1.70158, c3 = c1 + 1; return 1 + c3 * (x - 1) ** 3 + c1 * (x - 1) ** 2; };
   const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 
@@ -145,7 +153,6 @@
     },
     miss() { this.tone(330, 0.45, { type: 'sawtooth', vol: 0.07, to: 70 }); },
     collapse() { [0, 0.08, 0.16, 0.24].forEach((d, i) => this.tone(200 - i * 30, 0.18, { vol: 0.3, to: 50, delay: d })); },
-    tick() { this.tone(1200, 0.05, { type: 'square', vol: 0.04 }); },
     pop() { this.tone(620, 0.12, { type: 'triangle', vol: 0.12, to: 1100 }); },
     over() { [784, 659, 523, 392].forEach((f, i) => this.tone(f, 0.22, { type: 'triangle', vol: 0.13, delay: i * 0.13 })); },
   };
@@ -156,7 +163,7 @@
     canvas: $('game'), hud: $('hud'),
     form: $('start-form'), nick: $('nickname'), phone: $('phone'), collage: $('collage'),
     nameField: $('name-field'), phoneField: $('phone-field'),
-    time: $('time'), timeBox: $('time-box'), score: $('score'), scoreBox: $('score-box'),
+    lives: $('lives'), livesBox: $('lives-box'), score: $('score'), scoreBox: $('score-box'),
     tapHint: $('tap-hint'), countdown: $('countdown'), banner: $('banner'),
     pauseOverlay: $('pause-overlay'), btnPause: $('btn-pause'), btnResume: $('btn-resume'),
     btnRestart: $('btn-restart'), btnSound: $('btn-sound'), btnQuit: $('btn-quit'),
@@ -288,7 +295,7 @@
     c.fillStyle = g; c.fillRect(-50, -128, 100, 82);
     c.fillStyle = '#c48444'; c.fillRect(-48, -88, 96, 3);
     c.fillStyle = '#8a4f22'; c.fillRect(-48, -85, 96, 1.5);
-    [1, 0, 4, 2, 3].forEach((f, i) => {
+    [1, 0, 5, 2, 3].forEach((f, i) => { // one sachet of each flavour
       const img = PACKS[f].img;
       if (!img) return;
       const w = 14, h = (w * img.naturalHeight) / img.naturalWidth;
@@ -410,9 +417,14 @@
     [art.cloud, c] = makeCanvas(160, 72, px); paintCloud(c);
   }
 
+  // The start screen shows one pack of each flavour and keeps flipping one over to the other size of
+  // the same flavour (sachet <-> pouch), so all ten come round and no flavour is ever on show twice.
+  const showcase = { slots: [], next: 0 };
+
   function buildCollage() {
-    // [pack, left %, top %, rotation]: three in the back row, two in front
-    const layout = [[1, 0, 3, -9], [2, 33, 0, 2], [0, 66, 4, 9], [3, 16, 41, -5], [4, 50, 43, 6]];
+    // [pack, left %, top %, rotation]: three in the back row, two in front; one of each flavour
+    const layout = [[1, 0, 3, -9], [2, 33, 0, 2], [0, 66, 4, 9], [3, 16, 41, -5], [6, 50, 43, 6]];
+    showcase.slots = [];
     el.collage.textContent = '';
     layout.forEach(([fi, l, t, r], i) => {
       // the wrapper flies in and floats; the image inside wiggles when tapped
@@ -428,7 +440,22 @@
       img.draggable = false;
       pk.appendChild(img);
       el.collage.appendChild(pk);
+      showcase.slots.push({ img, f: fi });
     });
+  }
+
+  function rotateShowcase() {
+    if (!el.screens.start.classList.contains('active') || document.hidden) return;
+    const slot = showcase.slots[showcase.next];
+    showcase.next = (showcase.next + 1) % showcase.slots.length;
+    const f = PACKS.findIndex((p, i) => i !== slot.f && sameFlavour(i, slot.f));
+    if (f < 0) return;
+    slot.f = f;
+    slot.img.classList.remove('wiggle', 'swap');
+    void slot.img.offsetWidth;
+    slot.img.classList.add('swap');
+    // change the picture while it's edge-on, halfway through the flip
+    setTimeout(() => { slot.img.src = PACKS[f].src; slot.img.alt = PACKS[f].name; }, 260);
   }
 
   // split the title into letters so they can bounce in and ripple
@@ -455,14 +482,15 @@
 
   const TIPS = [
     'Tap anywhere to drop the pack',
-    'Perfect stack = +200 points & +1 second',
-    'Missed drops cost 3 seconds',
+    'Perfect stack = +200 bonus points',
+    'No time limit: play until your lives run out',
     'Keep it straight or the tower topples!',
   ];
   let tipIndex = 0;
   function nextTip() {
     if (!el.screens.start.classList.contains('active')) return;
-    const tips = physics.enabled ? [...TIPS, 'The tower sways, so time your drop!'] : TIPS;
+    const tips = [...TIPS, `You have ${rules.lives} ${rules.lives === 1 ? 'life' : 'lives'}: every fall costs one`];
+    if (physics.enabled) tips.push('The tower sways, so time your drop!');
     tipIndex = (tipIndex + 1) % tips.length;
     el.tip.classList.remove('enter', 'swap');
     void el.tip.offsetWidth;
@@ -497,7 +525,8 @@
     mode: 'menu', prevMode: 'play', round: 0,
     time: 0, score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
     tower: [], mover: null, debris: [], parts: [], texts: [], flashes: [],
-    camY: 0, shake: 0, spawnIn: 0, dir: 1, lastFlavor: -1, lastSecond: 0,
+    lives: 0, maxLives: 0, bestHeight: 0,
+    camY: 0, shake: 0, spawnIn: 0, dir: 1, lastPack: -1, recentPacks: [],
     cdStep: 0, cdTimer: 0, firstDrop: false, submitted: false, overTimer: 0,
     // tower physics for this round (a PHYSICS_LEVELS row, or null for the normal game), the tower's
     // sway (see swayX) and sections of tower that are tipping over
@@ -521,12 +550,33 @@
     }
   }
 
+  // The next pack is never the flavour of the pack it will land on, nor of the pack dropped just before
+  // (that one may have missed), so neighbours in the tower never look alike. It also skips the last few
+  // packs while it can, so the whole range comes round.
+  function pickPack() {
+    const top = S.tower[S.tower.length - 1].f;
+    const allowed = PACKS.map((_, i) => i).filter((i) => !sameFlavour(i, top) && !sameFlavour(i, S.lastPack));
+    const fresh = allowed.filter((i) => !S.recentPacks.includes(i));
+    const options = fresh.length ? fresh : allowed;
+    const f = options[(Math.random() * options.length) | 0];
+    S.lastPack = f;
+    S.recentPacks = [f, ...S.recentPacks].slice(0, 4);
+    return f;
+  }
+
   function spawnMover() {
-    let f;
-    do { f = (Math.random() * PACKS.length) | 0; } while (f === S.lastFlavor);
-    S.lastFlavor = f;
     S.dir = -S.dir;
-    S.mover = { x: S.dir > 0 ? MIN_X : MAX_X, dir: S.dir, f, state: 'move', wy: 0, vy: 0, t: 0 };
+    S.mover = { x: S.dir > 0 ? MIN_X : MAX_X, dir: S.dir, f: pickPack(), state: 'move', wy: 0, vy: 0, t: 0 };
+  }
+
+  // the tower top changed under a pack that hasn't dropped yet: if they now match, swap the waiting pack
+  // (it pops in again like a new one)
+  function recheckMover() {
+    const m = S.mover;
+    if (!m || m.state !== 'move' || !sameFlavour(m.f, S.tower[S.tower.length - 1].f)) return;
+    S.lastPack = -1;
+    m.f = pickPack();
+    m.t = 0;
   }
 
   // ───────────────────────── Game flow ─────────────────────────
@@ -545,12 +595,13 @@
       phys: physics.enabled ? PHYSICS_LEVELS[clamp(Math.round(physics.difficulty) || 3, 1, 5)] : null,
       sway: { d: 0, H: 0, phase: 0, lean: 0, kx: 0, kv: 0, risk: 0 },
       toppling: [],
-      time: CONFIG.GAME_TIME, score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
+      lives: rules.lives, maxLives: rules.lives, bestHeight: 0, score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
       tower: [newPack(VW / 2, BASE_PACK, 0)], mover: null, debris: [], parts: [], texts: [], flashes: [],
-      camY: 0, shake: 0, spawnIn: 0, dir: 1, lastFlavor: BASE_PACK, lastSecond: CONFIG.GAME_TIME,
+      camY: 0, shake: 0, spawnIn: 0, dir: 1, lastPack: -1, recentPacks: [BASE_PACK],
       firstDrop: false, submitted: false,
     });
     S.sway.H = topY();
+    renderLives();
     // every round (Play, Play Again, Restart) is its own play on the server; the game never waits for it
     S.playReq = api('start', { name: store.get('nick', ''), phone: store.get('phone', '') })
       .then((r) => r.play_id)
@@ -612,6 +663,8 @@
     if (!perfect) p.rv = (dx / half) * 1.1;
     S.tower.push(p);
     S.landed++;
+    // the game usually ends with a fall, so the result is the tallest the tower got, not what's left
+    S.bestHeight = Math.max(S.bestHeight, S.tower.length - 1);
     const pTop = p.y + p.h;
     dust(p.x + sx, p.y);
     if (S.phys) {
@@ -625,8 +678,6 @@
       S.streak++;
       S.perfects++;
       pts = 100 + CONFIG.PERFECT_BONUS;
-      S.time += CONFIG.PERFECT_TIME_BONUS;
-      timePop('+' + CONFIG.PERFECT_TIME_BONUS + 's', true);
       perfectFx(p);
       Sound.perfect(S.streak);
       vibrate(30);
@@ -665,8 +716,6 @@
 
   function missed(x) {
     S.streak = 0;
-    S.time = Math.max(0, S.time - CONFIG.MISS_PENALTY);
-    timePop('-' + CONFIG.MISS_PENALTY + 's', false);
     S.texts.push({
       lines: [{ text: 'MISS!', size: 36, fill: '#e4252b', stroke: '#fff' }],
       x: clamp(x, 70, VW - 70), wy: topY() + 60, rot: 0.08, age: 0, life: 0.9,
@@ -674,6 +723,42 @@
     Sound.miss();
     vibrate([40, 30, 40]);
     S.shake = 4;
+    loseLife();
+  }
+
+  // Every fall costs a life: a pack that misses or tips off, or the tower toppling (one life however
+  // many packs come down). The round ends with the last one.
+  function loseLife() {
+    if (S.mode !== 'play' || S.lives <= 0) return;
+    S.lives--;
+    if (S.maxLives > 10) { el.lives.querySelector('.lives-count').textContent = '× ' + S.lives; bump(el.livesBox); }
+    else el.lives.querySelectorAll('.heart')[S.lives].classList.add('breaking');
+    el.livesBox.classList.toggle('low', S.lives === 1);
+    el.lives.setAttribute('aria-label', `${S.lives} of ${S.maxLives} lives left`);
+    hudPop('-1');
+    if (S.lives === 0) endGame();
+  }
+
+  // one heart per life, or a heart and a count when there are more than ten
+  function renderLives() {
+    el.lives.textContent = '';
+    el.livesBox.classList.toggle('low', S.lives === 1);
+    el.lives.setAttribute('aria-label', `${S.lives} of ${S.maxLives} lives left`);
+    if (S.maxLives > 10) {
+      const heart = document.createElement('i');
+      heart.className = 'heart';
+      const count = document.createElement('span');
+      count.className = 'lives-count';
+      count.textContent = '× ' + S.lives;
+      el.lives.append(heart, count);
+      return;
+    }
+    el.lives.style.setProperty('--hs', S.maxLives <= 7 ? '18px' : '13px');
+    for (let i = 0; i < S.maxLives; i++) {
+      const heart = document.createElement('i');
+      heart.className = 'heart' + (i >= S.lives ? ' lost' : '');
+      el.lives.appendChild(heart);
+    }
   }
 
   // ───────────────────────── Tower physics ─────────────────────────
@@ -728,12 +813,13 @@
     const py = below.y + below.h * (1 - OVERLAP);
     const px = below.x + swayX(py) + (dir * PACK_W) / 2;
     const packs = t.splice(from).map((p) => ({ f: p.f, x: p.x + swayX(p.y), y: p.y, rot: p.rot + swayRot(p.y) }));
+    recheckMover();
     const last = packs[packs.length - 1];
     const height = Math.max(60, last.y + art.h[last.f] - py);
     S.toppling.push({ px, py, dir, height, th: 0, w: dir * 0.3, packs });
     S.sway.kv -= dir * 40; // the rest of the tower recoils
     S.sway.risk = 0;
-    if (!announce) return;
+    if (!announce) return; // a pack tipping off as it lands is a miss, which costs the life
     S.streak = 0;
     S.texts.push({
       lines: [{ text: 'OOPS!', size: 40, fill: '#e4252b', stroke: '#fff' }, { text: 'TOWER TOPPLED', size: 22, fill: '#fff', stroke: '#4a220c' }],
@@ -742,6 +828,7 @@
     Sound.collapse();
     vibrate(120);
     S.shake = 8;
+    loseLife();
   }
 
   // where a toppling pack is: its stacked position turned by th about the pivot (clockwise for th > 0)
@@ -779,6 +866,7 @@
 
   function collapse(from, dir) {
     const fallen = S.tower.splice(from);
+    recheckMover();
     fallen.forEach((p, k) => {
       S.debris.push({ x: p.x, wy: p.y, f: p.f, vx: dir * (50 + k * 35), vy: -40 - k * 15, rot: p.rot, vr: dir * (1.5 + k * 0.6), delay: k * 0.04 });
     });
@@ -790,6 +878,7 @@
     Sound.collapse();
     vibrate(120);
     S.shake = 12;
+    loseLife();
   }
 
   function endGame() {
@@ -800,7 +889,7 @@
     }
     el.banner.classList.add('show');
     Sound.over();
-    const result = { score: S.score, height: S.tower.length - 1, perfects: S.perfects };
+    const result = { score: S.score, height: S.bestHeight, perfects: S.perfects };
     S.finishReq = S.playReq
       .then((id) => id && api('finish', { play_id: id, ...result }).then(() => id))
       .catch(() => null);
@@ -808,7 +897,7 @@
   }
 
   function showResults() {
-    const height = S.tower.length - 1;
+    const height = S.bestHeight;
     const best = store.get('best', 0);
     const isBest = S.score > best;
     if (isBest) store.set('best', S.score);
@@ -864,11 +953,13 @@
 
   // Admin → Settings, via the page and the status poll: the admin can disable playing (the start screen
   // then shows their notice in place of the form) and switch on tower physics for the next round.
-  // status: { open, title, message, physics: { enabled, difficulty } }
+  // status: { open, title, message, lives, physics: { enabled, difficulty } }
   let gameOpen = true;
   let physics = { enabled: false, difficulty: 3 };
+  const rules = { lives: CONFIG.LIVES };
   function applyStatus(status) {
     if (status.physics) physics = status.physics;
+    if (status.lives) rules.lives = clamp(Math.round(status.lives), 1, 20);
     gameOpen = !!status.open;
     el.screens.start.classList.toggle('is-closed', !gameOpen);
     el.closedTitle.textContent = status.title || '';
@@ -958,11 +1049,12 @@
     S.texts.push({ lines, x: clamp(x + 64, 80, VW - 80), wy: top + 60, rot: -0.14, age: 0, life: 1.25, perfect: true });
   }
 
-  function timePop(txt, good) {
+  // a little "-1" flying off the lives box
+  function hudPop(txt) {
     const s = document.createElement('span');
-    s.className = 'time-pop' + (good ? ' good' : '');
+    s.className = 'hud-pop';
     s.textContent = txt;
-    el.timeBox.appendChild(s);
+    el.livesBox.appendChild(s);
     setTimeout(() => s.remove(), 900);
   }
 
@@ -992,13 +1084,6 @@
         if (S.cdStep > 0) { showCount(String(S.cdStep)); Sound.count(); }
         else { showCount('GO!'); Sound.go(); S.mode = 'play'; }
       }
-    }
-
-    if (S.mode === 'play') {
-      S.time -= dt;
-      const sec = Math.ceil(S.time);
-      if (sec !== S.lastSecond) { S.lastSecond = sec; if (sec > 0 && sec <= 5) Sound.tick(); }
-      if (S.time <= 0) { S.time = 0; endGame(); }
     }
 
     const m = S.mover;
@@ -1061,14 +1146,8 @@
     for (const cl of clouds) { cl.x += cl.v * dt; if (cl.x > VW + 40) cl.x = -160 * cl.s - 40; }
   }
 
-  const hudCache = { sec: -1, score: -1 };
+  const hudCache = { score: -1 };
   function updateHud(force) {
-    const sec = Math.max(0, Math.ceil(S.time));
-    if (force || sec !== hudCache.sec) {
-      hudCache.sec = sec;
-      el.time.textContent = mmss(sec);
-      el.timeBox.classList.toggle('low', sec <= 5);
-    }
     if (force) S.shownScore = S.score;
     else if (S.shownScore < S.score) S.shownScore = Math.min(S.score, S.shownScore + Math.max(3, Math.ceil((S.score - S.shownScore) * 0.2)));
     if (force || S.shownScore !== hudCache.score) {
@@ -1432,6 +1511,7 @@
   updateStartMeta();
   applyStatus(SERVER.status);
   setInterval(nextTip, 3200);
+  setInterval(rotateShowcase, 2600);
   // a start screen left open (an event kiosk) follows the admin opening or closing the game
   setInterval(() => {
     if (el.screens.start.classList.contains('active') && !document.hidden) refreshStatus();

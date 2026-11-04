@@ -1,6 +1,6 @@
 # Zara Tower Challenge
 
-Mobile stacking game for Zara: players enter their name and mobile number, stack moving Zara packs for 30 seconds, and submit their score to a shared leaderboard. An admin panel lists players and games and exports them as CSV.
+Mobile stacking game for Zara: players enter their name and mobile number, stack moving Zara packs until they run out of lives (7 by default, set in Admin → Settings), and submit their score to a shared leaderboard. An admin panel lists players and games and exports them as CSV.
 
 ## Run locally
 

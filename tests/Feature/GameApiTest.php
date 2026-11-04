@@ -69,6 +69,20 @@ class GameApiTest extends TestCase
         $this->assertNull(Play::find($id)->finished_at);
     }
 
+    public function test_rounds_have_no_time_limit_but_stale_ones_are_turned_away(): void
+    {
+        // a long game, played until the lives ran out
+        $long = $this->startRound();
+        $this->travel(20)->minutes();
+        $this->postJson('/game/finish', ['play_id' => $long, 'score' => 48000, 'height' => 160, 'perfects' => 40])->assertOk();
+
+        // a round left open for over an hour
+        $stale = $this->startRound();
+        $this->travel(61)->minutes();
+        $this->postJson('/game/finish', ['play_id' => $stale, 'score' => 500, 'height' => 5, 'perfects' => 0])
+            ->assertUnprocessable()->assertJsonValidationErrors('score');
+    }
+
     public function test_a_round_can_only_be_finished_once(): void
     {
         $id = $this->startRound();
