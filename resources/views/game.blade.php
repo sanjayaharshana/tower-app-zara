@@ -151,6 +151,10 @@
               PLAY
             </button>
           </div>
+          <p class="privacy-note enter" style="--e:1.3s">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.6 8 11 4.6-1.4 8-6 8-11V5l-8-3Zm-1.2 14.2-3.5-3.5 1.4-1.4 2.1 2.1 4.7-4.7 1.4 1.4-6.1 6.1Z"/></svg>
+            <span>{{ $settings['privacy_summary'] }} <button type="button" class="privacy-link" id="btn-privacy">Privacy notice</button></span>
+          </p>
         </form>
 
         <!-- shown instead of the form while the admin has playing disabled (Admin → Settings) -->
@@ -243,11 +247,21 @@
           <div class="val" id="over-score">0</div>
         </div>
 
-        <div class="height-pill">
-          <svg viewBox="0 0 48 40" aria-hidden="true"><path d="M5 13l10 9 9-15 9 15 10-9-4 21H9L5 13Z" fill="#f8bf26" stroke="#c98a0b" stroke-width="2" stroke-linejoin="round"/><rect x="9" y="33" width="30" height="5" rx="2" fill="#e09c12"/><circle cx="5" cy="12" r="3.2" fill="#f8bf26"/><circle cx="24" cy="6" r="3.2" fill="#f8bf26"/><circle cx="43" cy="12" r="3.2" fill="#f8bf26"/></svg>
-          <div>
-            <div class="t1">Tower Height</div>
-            <div class="t2" id="over-height">0 Packs</div>
+        <div class="result-pills">
+          <div class="height-pill">
+            <svg viewBox="0 0 48 40" aria-hidden="true"><path d="M5 13l10 9 9-15 9 15 10-9-4 21H9L5 13Z" fill="#f8bf26" stroke="#c98a0b" stroke-width="2" stroke-linejoin="round"/><rect x="9" y="33" width="30" height="5" rx="2" fill="#e09c12"/><circle cx="5" cy="12" r="3.2" fill="#f8bf26"/><circle cx="24" cy="6" r="3.2" fill="#f8bf26"/><circle cx="43" cy="12" r="3.2" fill="#f8bf26"/></svg>
+            <div>
+              <div class="t1">Tower Height</div>
+              <div class="t2" id="over-height">0 Packs</div>
+            </div>
+          </div>
+          <!-- the leaderboard place this result gives, from /game/finish -->
+          <div class="height-pill rank-pill" id="rank-pill">
+            <svg viewBox="0 0 40 40" aria-hidden="true"><circle cx="20" cy="22" r="14" fill="#f8bf26" stroke="#c98a0b" stroke-width="2"/><circle cx="20" cy="22" r="9.5" fill="none" stroke="#fff3c4" stroke-width="2"/><path d="M13 2h5l3 7h-5Zm14 0h-5l-3 7h5Z" fill="#e4252b"/><path d="m20 16 1.8 3.7 4 .6-2.9 2.8.7 4L20 25.2l-3.6 1.9.7-4-2.9-2.8 4-.6Z" fill="#fff"/></svg>
+            <div>
+              <div class="t1">Your Rank</div>
+              <div class="t2"><span id="over-rank">…</span><small id="over-rank-of"></small></div>
+            </div>
           </div>
         </div>
 
@@ -284,6 +298,25 @@
         </h2>
         <ol class="lb-list" id="lb-list"></ol>
         <button type="button" class="btn btn--outline" id="lb-close">Close</button>
+      </div>
+    </div>
+
+    <!-- ============ PRIVACY NOTICE (Admin → Settings) ============ -->
+    <div class="modal" id="privacy-modal">
+      <div class="card card--privacy" role="dialog" aria-modal="true" aria-labelledby="privacy-title">
+        <h2 id="privacy-title">Privacy notice</h2>
+        <div class="privacy-body">
+          @foreach (preg_split('/\R\s*\R/', trim($settings['privacy_notice'])) as $section)
+            @php($lines = preg_split('/\R/', trim($section)))
+            @if (count($lines) > 1)
+              <h3>{{ $lines[0] }}</h3>
+              <p>{!! nl2br(e(implode("\n", array_slice($lines, 1)))) !!}</p>
+            @else
+              <p>{{ $lines[0] }}</p>
+            @endif
+          @endforeach
+        </div>
+        <button type="button" class="btn btn--outline" id="privacy-close">Close</button>
       </div>
     </div>
 

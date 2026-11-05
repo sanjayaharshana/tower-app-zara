@@ -45,6 +45,7 @@
   .field-label { display: block; font-weight: 600; margin: 0 0 6px; }
   .field-group { margin-bottom: 14px; }
   .field-group .count { float: right; font-weight: 500; font-size: 13px; color: var(--muted); }
+  .field-group .hint { margin: 6px 0 0; font-size: 13px; }
   textarea { width: 100%; padding: 12px 16px; border: 2px solid var(--line); border-radius: 18px; background: #fff; font: 500 15px/1.45 'Fredoka', sans-serif; color: var(--brown-dark); outline: 0; resize: vertical; }
   textarea:focus { border-color: var(--gold); }
 
@@ -116,6 +117,22 @@
             </div>
           </div>
         </div>
+      </div>
+    </section>
+
+    <section class="card panel">
+      <h2>Privacy notice</h2>
+      <p class="muted">Players give their mobile number to play, so the start screen tells them how it is used. The short notice sits under the name and number fields, with a "Privacy notice" link that opens the full notice. Please check both say what your team actually does with the numbers.</p>
+      <div class="field-group">
+        <label class="field-label" for="privacy-summary">Short notice, under the form <span class="count" data-count-for="privacy-summary"></span></label>
+        <textarea id="privacy-summary" name="privacy_summary" maxlength="300" rows="3" required>{{ old('privacy_summary', $settings['privacy_summary']) }}</textarea>
+        @error('privacy_summary') <p class="error">{{ $message }}</p> @enderror
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="privacy-notice">Full privacy notice <span class="count" data-count-for="privacy-notice"></span></label>
+        <textarea id="privacy-notice" name="privacy_notice" maxlength="5000" rows="14" required>{{ old('privacy_notice', $settings['privacy_notice']) }}</textarea>
+        <p class="muted hint">Separate sections with a blank line. When a section has more than one line, its first line is shown as a heading.</p>
+        @error('privacy_notice') <p class="error">{{ $message }}</p> @enderror
       </div>
     </section>
 
@@ -205,13 +222,17 @@
       const msg = document.getElementById('preview-message');
       msg.textContent = message.value.trim();
       msg.hidden = !message.value.trim();
-      for (const input of [title, message]) {
-        document.querySelector(`[data-count-for="${input.id}"]`).textContent = `${input.value.length}/${input.maxLength}`;
-      }
     };
     title.addEventListener('input', sync);
     message.addEventListener('input', sync);
     sync();
+
+    document.querySelectorAll('[data-count-for]').forEach((count) => {
+      const input = document.getElementById(count.dataset.countFor);
+      const show = () => { count.textContent = `${input.value.length}/${input.maxLength}`; };
+      input.addEventListener('input', show);
+      show();
+    });
   })();
 
   // speed difficulty: name, description and how the levels play out follow the inputs

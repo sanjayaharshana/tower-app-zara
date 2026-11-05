@@ -83,6 +83,40 @@ class GameApiTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('score');
     }
 
+    public function test_finish_tells_the_player_their_leaderboard_rank(): void
+    {
+        foreach ([['Asha', '0770000001', 3000], ['Bimal', '0770000002', 2000], ['Chamari', '0770000003', 1000]] as [$name, $phone, $score]) {
+            $id = $this->startRound($name, $phone);
+            $this->finishRound($id, $score);
+            $this->submitRound($id);
+        }
+
+        // a newcomer's result slots in by score; ties go to whoever got there first
+        $kasun = $this->startRound('Kasun', '0771234567');
+        $this->travel(35)->seconds();
+        $this->postJson('/game/finish', ['play_id' => $kasun, 'score' => 2000, 'height' => 5, 'perfects' => 0])
+            ->assertOk()->assertJson(['rank' => 3, 'players' => 4]);
+        $this->submitRound($kasun)->assertJsonPath('leaderboard.2.name', 'Kasun');
+
+        // a weaker round keeps the player where their best round put them
+        $again = $this->startRound('Kasun', '0771234567');
+        $this->travel(35)->seconds();
+        $this->postJson('/game/finish', ['play_id' => $again, 'score' => 100, 'height' => 1, 'perfects' => 0])
+            ->assertOk()->assertJson(['rank' => 3, 'players' => 4]);
+
+        // and a better one moves them up
+        $best = $this->startRound('Kasun', '0771234567');
+        $this->travel(35)->seconds();
+        $this->postJson('/game/finish', ['play_id' => $best, 'score' => 5000, 'height' => 20, 'perfects' => 5])
+            ->assertOk()->assertJson(['rank' => 1, 'players' => 4]);
+    }
+
+    public function test_the_leaderboard_says_how_many_places_it_has(): void
+    {
+        $this->getJson('/game/leaderboard')->assertOk()
+            ->assertExactJson(['size' => 10, 'leaderboard' => []]);
+    }
+
     public function test_a_round_can_only_be_finished_once(): void
     {
         $id = $this->startRound();

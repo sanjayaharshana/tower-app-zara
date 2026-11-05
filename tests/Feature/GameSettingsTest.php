@@ -12,6 +12,9 @@ class GameSettingsTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** The privacy texts every settings form sends. */
+    private const PRIVACY = ['privacy_summary' => 'We use your number for this game only.', 'privacy_notice' => "What we collect\nYour name and number."];
+
     private function disablePlaying(string $title = 'Back at 6 pm', string $message = 'Come back soon!'): void
     {
         Setting::saveMany(['playing_disabled' => true, 'closed_title' => $title, 'closed_message' => $message]);
@@ -31,8 +34,8 @@ class GameSettingsTest extends TestCase
             'open' => true,
             'title' => Setting::DEFAULTS['closed_title'],
             'message' => Setting::DEFAULTS['closed_message'],
-            'lives' => 7,
-            'speed' => ['difficulty' => 3, 'start' => 230, 'step' => 0.25, 'max' => 560, 'packs_per_level' => 5],
+            'lives' => 5,
+            'speed' => ['difficulty' => 3, 'start' => 230, 'step' => 0.3, 'max' => 660, 'packs_per_level' => 5],
             'physics' => ['enabled' => false, 'difficulty' => 3],
         ]);
 
@@ -45,7 +48,7 @@ class GameSettingsTest extends TestCase
     public function test_admin_can_disable_playing_and_set_the_message(): void
     {
         $this->withSession(['admin_auth' => true])
-            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => 'Back at 6 pm', 'closed_message' => "See you\nsoon!", 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'])
+            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => 'Back at 6 pm', 'closed_message' => "See you\nsoon!", 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'] + self::PRIVACY)
             ->assertRedirect('/admin/settings')
             ->assertSessionHas('status');
 
@@ -54,7 +57,7 @@ class GameSettingsTest extends TestCase
 
         // the hidden "0" is all that's sent when the checkbox is unticked
         $this->withSession(['admin_auth' => true])
-            ->put('/admin/settings', ['playing_disabled' => '0', 'closed_title' => 'Back at 6 pm', 'closed_message' => '', 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'])
+            ->put('/admin/settings', ['playing_disabled' => '0', 'closed_title' => 'Back at 6 pm', 'closed_message' => '', 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'] + self::PRIVACY)
             ->assertRedirect('/admin/settings');
 
         $this->getJson('/game/status')->assertJson(['open' => true, 'message' => '']);
@@ -63,8 +66,8 @@ class GameSettingsTest extends TestCase
     public function test_settings_need_a_title_and_keep_the_texts_short(): void
     {
         $this->withSession(['admin_auth' => true])
-            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => '', 'closed_message' => str_repeat('a', 301), 'physics_difficulty' => '6', 'lives' => '0', 'speed_difficulty' => '6', 'packs_per_level' => '0'])
-            ->assertSessionHasErrors(['closed_title', 'closed_message', 'physics_difficulty', 'lives', 'speed_difficulty', 'packs_per_level']);
+            ->put('/admin/settings', ['playing_disabled' => '1', 'closed_title' => '', 'closed_message' => str_repeat('a', 301), 'physics_difficulty' => '6', 'lives' => '0', 'speed_difficulty' => '6', 'packs_per_level' => '0', 'privacy_summary' => '', 'privacy_notice' => str_repeat('a', 5001)])
+            ->assertSessionHasErrors(['closed_title', 'closed_message', 'physics_difficulty', 'lives', 'speed_difficulty', 'packs_per_level', 'privacy_summary', 'privacy_notice']);
 
         $this->assertTrue(Setting::gameStatus()['open']);
     }
@@ -76,7 +79,7 @@ class GameSettingsTest extends TestCase
             ->assertSee('Enable falling physics')
             ->assertSee('physics off, normal game');
 
-        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '1', 'physics_difficulty' => '5', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'])
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '1', 'physics_difficulty' => '5', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'] + self::PRIVACY)
             ->assertRedirect('/admin/settings');
 
         $this->getJson('/game/status')->assertJsonPath('open', true)
@@ -85,23 +88,23 @@ class GameSettingsTest extends TestCase
         $this->get('/')->assertSee('"physics":{"enabled":true,"difficulty":5}', false);
 
         // switching physics off keeps the chosen difficulty for next time
-        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '0', 'physics_difficulty' => '5', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5']);
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_enabled' => '0', 'physics_difficulty' => '5', 'lives' => '7', 'speed_difficulty' => '3', 'packs_per_level' => '5'] + self::PRIVACY);
         $this->getJson('/game/status')->assertJsonPath('physics', ['enabled' => false, 'difficulty' => 5]);
     }
 
     public function test_admin_sets_how_many_lives_a_game_starts_with(): void
     {
         $admin = $this->withSession(['admin_auth' => true]);
-        $admin->get('/admin/settings')->assertOk()->assertSee('Lives per game')->assertSee('value="7"', false);
+        $admin->get('/admin/settings')->assertOk()->assertSee('Lives per game')->assertSee('value="5"', false);
 
-        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '3', 'speed_difficulty' => '3', 'packs_per_level' => '5'])
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '3', 'speed_difficulty' => '3', 'packs_per_level' => '5'] + self::PRIVACY)
             ->assertRedirect('/admin/settings');
 
         $this->getJson('/game/status')->assertJsonPath('lives', 3);
         $this->get('/')->assertSee('"lives":3', false);
 
         foreach (['0', '21', 'many', ''] as $bad) {
-            $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => $bad, 'speed_difficulty' => '3', 'packs_per_level' => '5'])
+            $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => $bad, 'speed_difficulty' => '3', 'packs_per_level' => '5'] + self::PRIVACY)
                 ->assertSessionHasErrors('lives');
         }
         $this->assertSame(3, Setting::current()['lives']);
@@ -115,7 +118,7 @@ class GameSettingsTest extends TestCase
             ->assertSee('Level up every')
             ->assertSee('Right now: Normal · level up every 5 packs');
 
-        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => '5', 'packs_per_level' => '3'])
+        $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => '5', 'packs_per_level' => '3'] + self::PRIVACY)
             ->assertRedirect('/admin/settings');
 
         $hard = Setting::SPEED_LEVELS[5];
@@ -126,11 +129,33 @@ class GameSettingsTest extends TestCase
         $admin->get('/admin/settings')->assertSee('Right now: Very hard · level up every 3 packs');
 
         foreach ([['0', '5'], ['6', '5'], ['3', '0'], ['3', '21'], ['3', 'lots']] as [$difficulty, $packs]) {
-            $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => $difficulty, 'packs_per_level' => $packs])
+            $admin->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '7', 'speed_difficulty' => $difficulty, 'packs_per_level' => $packs] + self::PRIVACY)
                 ->assertSessionHasErrors();
         }
         $this->assertSame(5, Setting::current()['speed_difficulty']);
         $this->assertSame(3, Setting::current()['packs_per_level']);
+    }
+
+    public function test_the_start_screen_explains_how_the_mobile_number_is_used(): void
+    {
+        $this->get('/')->assertOk()
+            ->assertSee(Setting::PRIVACY_SUMMARY)
+            ->assertSee('Privacy notice')
+            ->assertSee('<h3>What we collect</h3>', false)
+            ->assertSee('Your mobile number is never shown publicly');
+
+        $this->withSession(['admin_auth' => true])
+            ->put('/admin/settings', ['closed_title' => 'Game closed', 'physics_difficulty' => '3', 'lives' => '5', 'speed_difficulty' => '3', 'packs_per_level' => '5',
+                'privacy_summary' => 'Numbers are only used to call <b>winners</b>.',
+                'privacy_notice' => "Intro line.\r\n\r\nWho we are\r\nThe Zara team.\r\nColombo"])
+            ->assertRedirect('/admin/settings');
+
+        $this->get('/')->assertOk()
+            ->assertSee('Numbers are only used to call &lt;b&gt;winners&lt;/b&gt;.', false)
+            ->assertSee('<p>Intro line.</p>', false)
+            ->assertSee('<h3>Who we are</h3>', false)
+            ->assertSee("<p>The Zara team.<br />\nColombo</p>", false)
+            ->assertDontSee(Setting::PRIVACY_SUMMARY);
     }
 
     public function test_every_speed_difficulty_starts_slower_than_it_ends(): void

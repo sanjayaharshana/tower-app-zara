@@ -29,6 +29,8 @@ class AdminSettingsController extends Controller
             'lives' => ['required', 'integer', 'between:1,'.Setting::MAX_LIVES],
             'speed_difficulty' => ['required', 'integer', 'between:1,'.count(Setting::SPEED_LEVELS)],
             'packs_per_level' => ['required', 'integer', 'between:1,'.Setting::MAX_PACKS_PER_LEVEL],
+            'privacy_summary' => ['required', 'string', 'max:300'],
+            'privacy_notice' => ['required', 'string', 'max:5000'],
         ]);
 
         Setting::saveMany([
@@ -40,6 +42,8 @@ class AdminSettingsController extends Controller
             'lives' => (int) $data['lives'],
             'speed_difficulty' => (int) $data['speed_difficulty'],
             'packs_per_level' => (int) $data['packs_per_level'],
+            'privacy_summary' => $data['privacy_summary'],
+            'privacy_notice' => $data['privacy_notice'],
         ]);
 
         return redirect()->route('admin.settings')->with('status', 'Settings saved.');

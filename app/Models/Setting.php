@@ -14,10 +14,33 @@ class Setting extends Model
         'closed_message' => "The Tower Challenge isn't open right now.\nPlease check back soon!",
         'physics_enabled' => false,
         'physics_difficulty' => 3,
-        'lives' => 7,
+        'lives' => 5,
         'speed_difficulty' => 3,
         'packs_per_level' => 5,
+        'privacy_summary' => self::PRIVACY_SUMMARY,
+        'privacy_notice' => self::PRIVACY_NOTICE,
     ];
+
+    /** Shown under the start form, where players enter their name and mobile number. */
+    public const PRIVACY_SUMMARY = 'By playing you agree that Zara may use your name and mobile number to run this game. Your number is never shown publicly.';
+
+    /** The full privacy notice, opened from the start screen. */
+    public const PRIVACY_NOTICE = <<<'TEXT'
+        What we collect
+        Your name, your mobile number, and the scores and times of the games you play.
+
+        Why we collect it
+        To run the Zara Tower Challenge: to keep one place on the leaderboard per player, to check that scores are genuine, and to contact you about your result.
+
+        Who can see it
+        Your name, best score and tower height are shown on the public leaderboard. Your mobile number is never shown publicly; only the Zara event team can see it.
+
+        How long we keep it
+        Only for as long as the Tower Challenge campaign needs it.
+
+        Your choices
+        Playing is optional. To have your details corrected or removed, please ask the Zara event team.
+        TEXT;
 
     /** Most lives a game can start with. */
     public const MAX_LIVES = 20;
@@ -32,11 +55,11 @@ class Setting extends Model
      * The game gets these numbers through gameStatus().
      */
     public const SPEED_LEVELS = [
-        1 => ['name' => 'Very easy', 'description' => 'Starts slow and speeds up gently.', 'start' => 170, 'step' => 0.15, 'max' => 380],
-        2 => ['name' => 'Easy', 'description' => 'A relaxed start that gets a little faster each level.', 'start' => 200, 'step' => 0.18, 'max' => 460],
-        3 => ['name' => 'Normal', 'description' => 'A steady start that gets noticeably faster each level.', 'start' => 230, 'step' => 0.25, 'max' => 560],
-        4 => ['name' => 'Hard', 'description' => 'Starts quick and speeds up sharply each level.', 'start' => 260, 'step' => 0.3, 'max' => 640],
-        5 => ['name' => 'Very hard', 'description' => 'Starts fast and soon reaches top speed. For experts.', 'start' => 300, 'step' => 0.4, 'max' => 720],
+        1 => ['name' => 'Very easy', 'description' => 'Starts slow and speeds up gently.', 'start' => 170, 'step' => 0.18, 'max' => 440],
+        2 => ['name' => 'Easy', 'description' => 'A relaxed start that gets a little faster each level.', 'start' => 200, 'step' => 0.22, 'max' => 540],
+        3 => ['name' => 'Normal', 'description' => 'A steady start that gets noticeably faster each level.', 'start' => 230, 'step' => 0.3, 'max' => 660],
+        4 => ['name' => 'Hard', 'description' => 'Starts quick and speeds up sharply each level.', 'start' => 260, 'step' => 0.35, 'max' => 760],
+        5 => ['name' => 'Very hard', 'description' => 'Starts fast and soon reaches top speed. For experts.', 'start' => 300, 'step' => 0.45, 'max' => 860],
     ];
 
     /**

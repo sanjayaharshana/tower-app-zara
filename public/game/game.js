@@ -6,7 +6,7 @@
   const CONFIG = {
     // a round has no time limit: it lasts until the lives run out. The number of lives is set in
     // Admin → Settings (status.lives); this is used if the server doesn't say.
-    LIVES: 7,
+    LIVES: 5,
     PERFECT_BONUS: 200,     // extra points for a perfect stack
     // mobile numbers accepted on the start screen (spaces/dashes are stripped first);
     // Sri Lankan mobiles such as 0771234567, +94771234567 or 94771234567.
@@ -47,7 +47,7 @@
   // How the moving pack speeds up: every `packs` stacked packs the level goes up and the pack gets
   // `step` × its starting speed faster, up to `max` (speeds in units per second). Admin → Settings picks
   // the numbers (status.speed, from Setting::SPEED_LEVELS on the server); these are used if it doesn't say.
-  const SPEED = { start: 230, step: 0.25, max: 560, packs: 5 };
+  const SPEED = { start: 230, step: 0.3, max: 660, packs: 5 };
   const SCENE_H = 330;
   // Zara tea stall on the lawn right of the tower, a transparent cut-out picture:
   // x, y = middle of its base in scene units, w = width in scene units.
@@ -171,9 +171,10 @@
     pauseOverlay: $('pause-overlay'), btnPause: $('btn-pause'), btnResume: $('btn-resume'),
     btnRestart: $('btn-restart'), btnSound: $('btn-sound'), btnQuit: $('btn-quit'),
     overScore: $('over-score'), overHeight: $('over-height'), overBest: $('over-best'),
-    overPerfects: $('over-perfects'), newBest: $('new-best'),
+    overPerfects: $('over-perfects'), newBest: $('new-best'), overRank: $('over-rank'), overRankOf: $('over-rank-of'),
     btnSubmit: $('btn-submit'), submitLabel: $('submit-label'), btnAgain: $('btn-again'), btnMenu: $('btn-menu'),
     lbModal: $('lb-modal'), lbList: $('lb-list'), lbClose: $('lb-close'), btnLbStart: $('btn-lb-start'),
+    privacyModal: $('privacy-modal'), privacyClose: $('privacy-close'), btnPrivacy: $('btn-privacy'),
     tip: $('tip'), bestChip: $('best-chip'), bestVal: $('best-val'),
     closedTitle: $('closed-title'), closedMessage: $('closed-message'),
   };
@@ -432,6 +433,7 @@
     phys: null, sway: null, toppling: [],
     // server round: resolve to the play id (or null if the server couldn't be reached)
     playReq: Promise.resolve(null), finishReq: Promise.resolve(null),
+    placing: null, // the server's answer to finish: { rank, players } on the leaderboard
   };
   let clouds = [];
   let roundNo = 0; // S.round: tells a late server reply which round it belongs to
@@ -499,7 +501,7 @@
       lives: rules.lives, maxLives: rules.lives, bestHeight: 0, score: 0, shownScore: 0, landed: 0, perfects: 0, streak: 0,
       tower: [newPack(VW / 2, BASE_PACK, 0)], mover: null, debris: [], parts: [], texts: [], flashes: [],
       camY: 0, shake: 0, spawnIn: 0, dir: 1, lastPack: -1, recentPacks: [BASE_PACK],
-      firstDrop: false, submitted: false,
+      firstDrop: false, submitted: false, placing: null,
     });
     S.sway.H = topY();
     renderLives();
@@ -825,7 +827,7 @@
     Sound.over();
     const result = { score: S.score, height: S.bestHeight, perfects: S.perfects };
     S.finishReq = S.playReq
-      .then((id) => id && api('finish', { play_id: id, ...result }).then(() => id))
+      .then((id) => id && api('finish', { play_id: id, ...result }).then((r) => { S.placing = r; return id; }))
       .catch(() => null);
     S.overTimer = setTimeout(showResults, 1500);
   }
@@ -843,6 +845,21 @@
     el.overScore.textContent = '0';
     showScreen('over');
     countUp(el.overScore, S.score, 900);
+    showRank();
+  }
+
+  // the leaderboard place this result gives (their best round counts), once the server has the result
+  function showRank() {
+    const round = S.round;
+    el.overRank.textContent = '…';
+    el.overRankOf.textContent = '';
+    S.finishReq.then(() => {
+      if (S.round !== round) return;
+      const r = S.placing;
+      el.overRank.textContent = r && r.rank ? '#' + fmt(r.rank) : '–';
+      el.overRankOf.textContent = r && r.rank ? ` of ${fmt(r.players)}` : '';
+      bump(el.overRank.closest('.rank-pill'));
+    });
   }
 
   function pause() {
@@ -951,11 +968,15 @@
     return `<li class="${cls}"><span class="lb-rank">${e.rank}</span><span class="lb-name">${escapeHtml(e.name)}<span class="lb-sub">${h}</span></span><span class="lb-score">${fmt(e.score)}</span></li>`;
   }
 
-  // standings from the server: { leaderboard: [...rows], you?: row outside the top }
+  // standings from the server: { size, leaderboard: [...rows], you?: row outside the top }. Every place on
+  // the board is listed; the open ones invite players to take them.
   function renderStandings(data) {
     const rows = data.leaderboard.map(lbRow);
+    for (let rank = rows.length + 1; rank <= (data.size || 10); rank++) {
+      rows.push(`<li class="lb-row lb-open"><span class="lb-rank">${rank}</span><span class="lb-name">${rank === 1 ? 'Be the first to stack!' : 'Could be you!'}</span><span class="lb-score">–</span></li>`);
+    }
     if (data.you) rows.push('<li class="lb-gap">• • •</li>' + lbRow(data.you));
-    showLeaderboard(rows.length ? rows.join('') : '<li class="lb-empty">No scores yet.<br>Be the first to stack!</li>');
+    showLeaderboard(rows.join(''));
     const mine = el.lbList.querySelector('.me');
     if (mine) mine.scrollIntoView({ block: 'nearest' });
   }
@@ -1397,6 +1418,9 @@
     img.classList.add('wiggle');
   });
   el.lbClose.addEventListener('click', () => el.lbModal.classList.remove('show'));
+  el.btnPrivacy.addEventListener('click', () => el.privacyModal.classList.add('show'));
+  el.privacyClose.addEventListener('click', () => el.privacyModal.classList.remove('show'));
+  el.privacyModal.addEventListener('click', (e) => { if (e.target === el.privacyModal) el.privacyModal.classList.remove('show'); });
   el.lbModal.addEventListener('click', (e) => { if (e.target === el.lbModal) el.lbModal.classList.remove('show'); });
 
   document.addEventListener('visibilitychange', () => {

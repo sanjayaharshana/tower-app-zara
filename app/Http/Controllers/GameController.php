@@ -18,7 +18,7 @@ class GameController extends Controller
         $status = Setting::gameStatus();
 
         // read by public/game/game.js as window.ZARA
-        return view('game', ['status' => $status, 'zara' => [
+        return view('game', ['status' => $status, 'settings' => Setting::current(), 'zara' => [
             'assetBase' => asset('game').'/',
             'status' => $status,
             'routes' => [
@@ -90,7 +90,33 @@ class GameController extends Controller
         ]);
         $play->player->increment('games_played');
 
-        return response()->json(['ok' => true]);
+        return response()->json(['ok' => true] + $this->rankAfter($play));
+    }
+
+    /**
+     * The leaderboard place the player will have once this round is submitted: their best round counts,
+     * so that is this one or an earlier one that was better. `players` counts everyone on the board then.
+     */
+    private function rankAfter(Play $play): array
+    {
+        $player = $play->player;
+        $others = Player::query()->whereNotNull('best_at')->whereKeyNot($player->id);
+        $players = (clone $others)->count() + 1;
+
+        $keepsBest = $player->best_at !== null
+            && ($player->best_score > $play->score
+                || ($player->best_score === $play->score && $player->best_height >= $play->height));
+        if ($keepsBest) {
+            return ['rank' => $player->rank(), 'players' => $players];
+        }
+
+        // a new best goes below anyone already on the board with the same score and height
+        $ahead = $others->where(fn ($q) => $q
+            ->where('best_score', '>', $play->score)
+            ->orWhere(fn ($q) => $q->where('best_score', $play->score)->where('best_height', '>=', $play->height)))
+            ->count();
+
+        return ['rank' => $ahead + 1, 'players' => $players];
     }
 
     /** Put a finished round on the leaderboard (a player keeps their best) and return the standings. */
@@ -136,7 +162,10 @@ class GameController extends Controller
             'me' => $me !== null && $me->is($p),
         ];
 
-        $standings = ['leaderboard' => $top->values()->map(fn (Player $p, int $i) => $row($p, $i + 1))];
+        $standings = [
+            'size' => (int) config('game.leaderboard_size'),
+            'leaderboard' => $top->values()->map(fn (Player $p, int $i) => $row($p, $i + 1)),
+        ];
         if ($me?->best_at !== null && ! $top->contains($me)) {
             $standings['you'] = $row($me, $me->rank());
         }
